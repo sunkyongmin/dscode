@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>동신병원 응급실 상병 선정</title>
+<style>
+  :root{--bg:#f4f6f9;--card:#fff;--line:#d9dee6;--txt:#1d2430;--mut:#6b7482;--pri:#1f4e8c;--warn:#b7791f;--bad:#b42318;--ok:#1a7f4b;--warnbg:#fff7e6;--badbg:#fdecea;--okbg:#e8f6ee;--infobg:#eaf1fb}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:-apple-system,"Malgun Gothic","Apple SD Gothic Neo",sans-serif;background:var(--bg);color:var(--txt);font-size:15px}
+  header{background:var(--pri);color:#fff;padding:12px 16px;font-weight:700;font-size:17px;display:flex;justify-content:space-between;align-items:center}
+  header small{font-weight:400;font-size:12px;opacity:.85}
+  nav{display:flex;background:#fff;border-bottom:1px solid var(--line);overflow-x:auto}
+  nav button{flex:1;min-width:58px;border:0;background:none;padding:11px 4px;font-size:14px;color:var(--mut);border-bottom:3px solid transparent;cursor:pointer;white-space:nowrap}
+  nav button.on{color:var(--pri);border-color:var(--pri);font-weight:700}
+  main{padding:14px;max-width:900px;margin:0 auto}
+  .tab{display:none}.tab.on{display:block}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:12px}
+  h3{margin:0 0 8px;font-size:15px}
+  textarea,input,select{width:100%;border:1px solid var(--line);border-radius:8px;padding:10px;font-size:15px;font-family:inherit;background:#fff}
+  textarea{min-height:110px;resize:vertical}
+  label{display:block;font-size:13px;color:var(--mut);margin:10px 0 4px}
+  .row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;align-items:center}
+  .btn{border:1px solid var(--pri);background:var(--pri);color:#fff;border-radius:8px;padding:10px 14px;font-size:14px;cursor:pointer}
+  .btn:disabled{opacity:.5;cursor:default}
+  .btn.sec{background:#fff;color:var(--pri)}
+  .btn.sm{padding:5px 9px;font-size:12px}
+  .btn.danger{border-color:var(--bad);background:#fff;color:var(--bad)}
+  .alert{border-left:4px solid;border-radius:8px;padding:10px 12px;margin:8px 0}
+  .alert.bad{border-color:var(--bad);background:var(--badbg)}
+  .alert.warn{border-color:var(--warn);background:var(--warnbg)}
+  .alert.ok{border-color:var(--ok);background:var(--okbg)}
+  .alert.info{border-color:var(--pri);background:var(--infobg)}
+  .alert .t{font-weight:700;margin-bottom:4px}
+  .code{display:inline-flex;align-items:center;gap:6px;background:#fff;border:1px solid var(--line);border-radius:6px;padding:3px 8px;margin:3px 4px 3px 0;font-size:14px;cursor:pointer;max-width:100%}
+  .code b{font-family:Menlo,Consolas,monospace;color:var(--pri)}
+  .code.bad b{color:var(--bad);text-decoration:line-through}
+  .code.warn b{color:var(--warn)}
+  .code:active{background:var(--infobg)}
+  .mut{color:var(--mut);font-size:13px}
+  .rule{border:1px solid var(--line);border-radius:8px;padding:10px;margin:8px 0}
+  .rule .h{display:flex;justify-content:space-between;align-items:center;gap:8px}
+  .tag{display:inline-block;font-size:11px;padding:2px 6px;border-radius:4px;background:#e6ebf2;color:var(--mut);margin-right:4px;vertical-align:middle}
+  .tag.order{background:#e3ecfa;color:var(--pri)}.tag.code{background:#fdecea;color:var(--bad)}.tag.doc{background:#fff7e6;color:var(--warn)}.tag.bad{background:#fdecea;color:var(--bad)}.tag.warn{background:#fff7e6;color:var(--warn)}
+  table{width:100%;border-collapse:collapse;font-size:14px}
+  td,th{border-bottom:1px solid var(--line);padding:7px 4px;text-align:left;vertical-align:top}
+  th{color:var(--mut);font-weight:600;font-size:13px}
+  .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#222;color:#fff;padding:9px 16px;border-radius:20px;font-size:13px;opacity:0;transition:.25s;pointer-events:none;z-index:9}
+  .toast.show{opacity:1}
+  details summary{cursor:pointer;color:var(--pri);font-size:14px}
+  .res{border-bottom:1px solid var(--line);padding:8px 2px;display:flex;gap:10px;align-items:flex-start}
+  .res .c{font-family:Menlo,Consolas,monospace;font-weight:700;color:var(--pri);min-width:62px;cursor:pointer}
+  .res .n{flex:1}.res .n .en{color:var(--mut);font-size:12px}
+  .res .note{font-size:12px;color:var(--ok)}
+  .dx{border:1px solid var(--line);border-radius:8px;padding:10px;margin:8px 0;background:#fff}
+  .dx .hd{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .dx .why{font-size:13px;color:var(--mut);margin-top:4px}
+  pre.ref{white-space:pre-wrap;font-family:inherit;font-size:13px;line-height:1.5;margin:0;background:#fafbfd;border:1px solid var(--line);border-radius:8px;padding:10px}
+  .spin{display:inline-block;width:14px;height:14px;border:2px solid #fff;border-top-color:transparent;border-radius:50%;animation:sp .8s linear infinite;vertical-align:middle;margin-right:6px}
+  @keyframes sp{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<header><span>동신병원 응급실 상병 선정</span><small id="hdStat"></small></header>
+<nav>
+  <button class="on" data-t="ai">추천</button>
+  <button data-t="search">검색</button>
+  <button data-t="check">점검</button>
+  <button data-t="ref">기준</button>
+  <button data-t="log">요청기록</button>
+  <button data-t="rules">규칙</button>
+  <button data-t="stats">분석</button>
+  <button data-t="set">설정</button>
+</nav>
+<main>
+
+<!-- 추천 (AI) -->
+<section class="tab on" id="tab-ai">
+  <div class="card">
+    <h3>가명화한 의무기록 → 상병 추천</h3>
+    <p class="mut" style="margin:0 0 6px">CC, PI, 진찰 소견, 검사 결과, 영상 판독, 추정진단을 붙여넣으세요. <b>이름·등록번호·생년월일·연락처는 빼고</b> 넣습니다. 전송 전에 숫자(6자리 이상)는 자동으로 가립니다.</p>
+    <textarea id="aiNote" style="min-height:170px" placeholder="예)&#10;CC: 우하복부 통증 (onset 1일 전)&#10;PI: 60/F, 어제 저녁부터 복통, 오심, 설사 3회. 발열 없음.&#10;PE: RLQ tenderness(+), rebound(-)&#10;Lab: WBC 12.3, CRP 3.2&#10;Abd CT: 충수 직경 9mm, 주위 지방 침윤&#10;Imp) acute appendicitis"></textarea>
+    <label>처방·검사·처치 (선택 — 병원 기준 점검에 사용)</label>
+    <input id="aiOrders" placeholder="예: Abd CT, Gaster inj, Macperan, suture 3cm">
+    <div class="row">
+      <button class="btn" id="aiBtn" onclick="runAI()">상병 추천</button>
+      <button class="btn sec" onclick="clearAI()">지움</button>
+      <span class="mut" id="aiHint"></span>
+    </div>
+  </div>
+  <div id="aiOut"></div>
+</section>
+
+<!-- 검색 -->
+<section class="tab" id="tab-search">
+  <div class="card">
+    <h3>상병코드 검색</h3>
+    <input id="srchIn" placeholder="추정진단명·약어·한글·코드 (예: AGE, 발목 염좌, K29, cellulitis)" oninput="runSearch()" autocomplete="off">
+    <div class="mut" style="margin-top:6px" id="srchStat"></div>
+  </div>
+  <div id="srchOut"></div>
+</section>
+
+<!-- 점검 -->
+<section class="tab" id="tab-check">
+  <div class="card">
+    <h3>처방·검사와 입력한 상병을 병원 기준으로 점검</h3>
+    <p class="mut" style="margin:0 0 6px">약 이름, 검사, 처치, 상병코드를 줄바꿈이나 쉼표로 구분해서 입력.</p>
+    <textarea id="chkIn" placeholder="예)&#10;Gaster inj, Macperan, Nebulizer&#10;Abd CT&#10;A099, R51"></textarea>
+    <div class="row">
+      <button class="btn" onclick="runCheck()">점검</button>
+      <button class="btn sec" onclick="document.getElementById('chkIn').value='';document.getElementById('chkOut').innerHTML=''">지움</button>
+    </div>
+  </div>
+  <div id="chkOut"></div>
+</section>
+
+<!-- 기준 원문 -->
+<section class="tab" id="tab-ref">
+  <div class="card">
+    <h3>의무기록실 안내 원문 — 응급실 의무기록 작성관리 (TEL 2225)</h3>
+    <p class="mut">보험심사 기준의 참고용 원문입니다. 점검·추천 기능은 이 내용을 규칙 탭의 규칙으로 옮겨 사용합니다.</p>
+<pre class="ref">[작성관리 (1)]
+1. 주진단으로 V, W, X, Y 코드 사용 불가
+   : 외인에 대한 특정 기타결과를 나타내는 S, T 코드를 주진단으로 입력
+   예) Rt. forearm 집에서 키우는 개에 물려 내원
+       주) S508 아래팔의 기타 표재성 손상
+       부) W540 개에 물림 또는 부딪힘, 주택
+   cf. T141(동물물림 NOS) 코드는 사용 불가
+
+2. 진단으로 대체할 수 있는 특정 R코드는 주진단에 지양
+   지양할 R코드: R51(두통), R42(어지럼증 및 어지럼), R99(사망), R54(노쇠), R413(기타 기억상실) 등
+   R53(전신쇠약)은 아예 사용 불가한 코드 → 약제 or PHx로 코드 부여 (예: F480 신경무력증)
+
+3. Qupron Tab. 사용 시 A099(상세불명 기원의 위장염 및 결장염) 사용 불가
+   → A049(상세불명의 세균성 장감염)으로 입력
+
+4. J00, J060, J069 → J40(급성인지 만성인지 명시되지 않은 기관지염)으로 입력
+   J209는 15세 미만에서의 기관지염 → J40으로 입력
+
+5. 인수인계 또는 재내원의 경우 CC, PI, IMP, Onset 기재
+   인수인계: cc) pi) onset) imp) 주)  /  재내원: cc) pi) onset) imp) 주)
+
+6. 발병시간 기입 시 2일 전까지는 '시간' 입력 (NEDIS 전송 시 필요)  예) 2일전 7시
+
+7. 경과기록에 작성하는 상병과 진단명 일치. 진단명 문구에 (주) / (부) 문구 작성
+
+8. T140-4(타박상 NOS) 코드 사용 불가 → S코드 중 해당하는 타박상 코드 입력</pre>
+<br>
+<pre class="ref">[작성관리 (2)]
+1. 약제/주사별 상병 매칭
+   1) Nebulizer → J459(상세불명의 천식)
+   2) URSA → K769(상세불명의 간질환)
+   3) Restam/Pamagen → K297(상세불명의 위염)
+   4) Gaster inj → K219(식도염을 동반하지 않은 위-식도 역류병)
+   5) Gaster inj + Pamagen → K219
+   6) Gaster inj + Restam → K219 + K297
+   7) Macperan → R111(구역) R112(구토) R113(구역을 동반한 구토)
+
+2. 검사별 상병 매칭
+   1) Pro-BNP → r/o I509(상세불명의 심부전)
+   2) D-Dimer → r/o I7439(기타 및 상세불명 색전증 및 혈전증)
+   3) CK-MB → Z035(기타 의심되는 심혈관 질환의 관찰) — 주진단 사용 불가
+   4) Hemoglobin A1C → R730(이상포도당내성검사) — 당뇨병 코드(E10_~E14_) 범주의 어떤 코드와도 동시 분류 불가
+   5) Abd, Chest CT 동시촬영 (예: 장염으로 방문했을 때 Chest CT 촬영) → 경과기록지에 소견 작성, 진단명 각각 부여
+   6) Abd CT의 경우 A099(상세불명 기원의 위장염 및 결장염) 코드로는 수가 인정되지 않음 → 보완상병 입력
+   7) 외상으로 S010(두피의 열린상처) 있으면서 Brain CT 촬영하는 경우 → S0600(열린 두개내상처가 없는 진탕) 코드 같이 입력
+
+3. 기타
+   1) R33(소변정체) → R391(기타 배뇨곤란)
+   2) 사후피임약 처방 → Z308(기타 피임관리) or Z309(상세불명의 피임관리)
+   3) Suture 시 경과기록에 wound 'cm' 기재</pre>
+  </div>
+</section>
+
+<!-- 요청기록 -->
+<section class="tab" id="tab-log">
+  <div class="card">
+    <h3>심사팀 수정 요청 기록</h3>
+    <p class="mut" style="margin:0">심사팀이 물어보러 올 때마다 적어 두면 분석 탭에서 반복 패턴이 보이고, 규칙으로 바로 바꿀 수 있습니다. 환자 식별정보는 적지 마세요.</p>
+    <label>날짜</label><input type="date" id="lgDate">
+    <label>상황 (처방·검사·주호소 등)</label><input id="lgCtx" placeholder="예: 장염 환자 Abd CT, Qupron 처방">
+    <label>원래 입력한 상병</label><input id="lgFrom" placeholder="예: A099">
+    <label>심사팀이 요청한 상병</label><input id="lgTo" placeholder="예: A049 (추가 또는 교체)">
+    <label>요청 종류</label>
+    <select id="lgKind"><option value="교체">교체</option><option value="추가">추가(누락 보완)</option><option value="삭제">삭제</option><option value="기록보완">기록 보완</option></select>
+    <label>심사팀 사유·메모</label><input id="lgWhy" placeholder="예: 급여기준 상병 아님">
+    <div class="row"><button class="btn" onclick="addLog()">기록</button></div>
+  </div>
+  <div id="logList"></div>
+</section>
+
+<!-- 규칙 -->
+<section class="tab" id="tab-rules">
+  <div class="card">
+    <h3 id="rfTitle">규칙 추가</h3>
+    <input type="hidden" id="rfId">
+    <label>종류</label>
+    <select id="rfType">
+      <option value="order">처방/검사 → 필요 상병</option>
+      <option value="code">상병코드 → 사용불가·교체·주의</option>
+      <option value="doc">기록 작성 유의사항</option>
+    </select>
+    <label>제목</label><input id="rfTitleIn" placeholder="예: Nebulizer → J459">
+    <label>조건 (쉼표로 구분, 모두 만족해야 함 / 같은 뜻은 | 로 묶음)</label>
+    <input id="rfWhen" placeholder="예: nebulizer|네뷸   또는   S010, brain ct|두부 ct">
+    <p class="mut" style="margin:4px 0 0">코드 조건은 코드 그대로(R53), 앞자리만 맞추려면 별표(E1*, W*)</p>
+    <label>필요 상병 (없으면 경고 / 하나라도 있으면 통과) — 코드:이름, 쉼표 구분</label>
+    <input id="rfAdd" placeholder="예: J459:상세불명의 천식">
+    <label>사용불가·지양 상병 — 코드:이름</label>
+    <input id="rfAvoid" placeholder="예: R53:전신쇠약">
+    <label>심각도</label>
+    <select id="rfSev"><option value="bad">사용불가/삭감</option><option value="warn">주의/지양</option><option value="info">참고</option></select>
+    <label>설명·근거</label><textarea id="rfNote" style="min-height:60px" placeholder="예: 의무기록실 안내(2). 주진단 사용 불가"></textarea>
+    <div class="row">
+      <button class="btn" onclick="saveRule()">저장</button>
+      <button class="btn sec" onclick="resetRuleForm()">취소</button>
+    </div>
+  </div>
+  <div class="card"><input id="ruleFilter" placeholder="규칙 목록 필터" oninput="renderRules()"></div>
+  <div id="ruleList"></div>
+</section>
+
+<!-- 분석 -->
+<section class="tab" id="tab-stats"><div id="statsOut"></div></section>
+
+<!-- 설정 -->
+<section class="tab" id="tab-set">
+  <div class="card">
+    <h3>AI 연결 (Claude API)</h3>
+    <p class="mut">API 키는 이 브라우저에만 저장되고 Anthropic API 호출에만 쓰입니다. 병원 PC에서 api.anthropic.com 접속이 막혀 있으면 아래 연결 테스트가 실패합니다.</p>
+    <label>API 키</label><input type="password" id="setKey" placeholder="sk-ant-...">
+    <label>모델</label>
+    <select id="setModel">
+      <option value="claude-sonnet-5-5">claude-sonnet-5-5 (권장)</option>
+      <option value="claude-opus-5-5">claude-opus-5-5 (정확도 우선)</option>
+      <option value="claude-haiku-5-5">claude-haiku-5-5 (속도 우선)</option>
+      <option value="custom">직접 입력</option>
+    </select>
+    <input id="setModelCustom" placeholder="모델 ID 직접 입력" style="margin-top:6px;display:none">
+    <div class="row">
+      <button class="btn" onclick="saveSettings()">저장</button>
+      <button class="btn sec" onclick="testAPI()">연결 테스트</button>
+      <span class="mut" id="setStat"></span>
+    </div>
+  </div>
+  <div class="card">
+    <h3>상병코드표</h3>
+    <p class="mut" id="kcdStat"></p>
+    <p class="mut">같은 폴더의 <code>kcd.json</code>(심평원 상병마스터 변환본, 형식: <code>[코드, 한글명, 영문명, 속성, 동의어]</code>)을 자동으로 읽습니다. 속성: I 불완전코드, P 주상병불가, F/M 성별, a하한-상한 연령. 또는 아래에서 JSON/CSV(코드,한글명,영문명) 파일을 직접 불러올 수 있습니다(이번 세션만 유지).</p>
+    <input type="file" id="kcdFile" accept=".json,.csv,.txt" onchange="loadKcdFile(this.files[0])">
+  </div>
+  <div class="card">
+    <h3>백업·복원 (규칙·요청기록·코드 메모)</h3>
+    <div class="row">
+      <button class="btn" onclick="exportData()">내보내기</button>
+      <button class="btn sec" onclick="importData()">가져오기</button>
+      <button class="btn danger" onclick="resetSeed()">기본 규칙으로 초기화</button>
+    </div>
+    <textarea id="dataBox" style="min-height:140px;margin-top:10px;font-family:Menlo,Consolas,monospace;font-size:12px"></textarea>
+    <div class="row"><button class="btn sec sm" onclick="copyText(document.getElementById('dataBox').value)">복사</button></div>
+  </div>
+</section>
+
+</main>
+<div class="toast" id="toast"></div>
+
+<script src="kcd_builtin.js"></script>
+<script>
+/* ---------- 기본 규칙 (의무기록실 안내문) ---------- */
+const SRC1='의무기록실 「응급실 의무기록 작성관리」', SRC2='의무기록실 「응급실 의무기록 작성관리(2)」';
+const SEED_RULES=[
+ {type:'order',title:'Nebulizer → J459',when:['nebulizer|네뷸|neb '],add:['J459:상세불명의 천식'],sev:'bad',note:SRC2+' 1-1'},
+ {type:'order',title:'URSA → K769',when:['ursa|우루사|ursodeoxy'],add:['K769:상세불명의 간질환'],sev:'bad',note:SRC2+' 1-2'},
+ {type:'order',title:'Restam / Pamagen → K297',when:['restam|레스탐|pamagen|파마젠'],add:['K297:상세불명의 위염'],sev:'bad',note:SRC2+' 1-3. Gaster와 함께 쓰면 K219 + K297'},
+ {type:'order',title:'Gaster inj → K219',when:['gaster|가스터|famotidine'],add:['K219:식도염을 동반하지 않은 위-식도 역류병'],sev:'bad',note:SRC2+' 1-4~6. Gaster+Pamagen → K219, Gaster+Restam → K219 + K297'},
+ {type:'order',title:'Macperan → R111/R112/R113',when:['macperan|맥페란|metoclopramide'],add:['R111:구역','R112:구토','R113:구역을 동반한 구토'],sev:'bad',note:SRC2+' 1-7'},
+ {type:'order',title:'사후피임약 → Z308/Z309',when:['사후피임|응급피임|levonorgestrel|노레보|엘라원|ulipristal|포스티노'],add:['Z308:기타 피임관리','Z309:상세불명의 피임관리'],sev:'bad',note:SRC2+' 3-2'},
+ {type:'code',title:'Qupron 사용 시 A099 불가 → A049',when:['qupron|큐프론|ciprofloxacin','A099'],avoid:['A099:상세불명 기원의 위장염 및 결장염'],add:['A049:상세불명의 세균성 장감염'],sev:'bad',note:SRC1+' 3'},
+ {type:'order',title:'Pro-BNP → r/o I509',when:['bnp'],add:['I509:상세불명의 심부전'],sev:'bad',note:SRC2+' 2-1. r/o 상병으로 기재'},
+ {type:'order',title:'D-Dimer → r/o I7439',when:['d-dimer|ddimer|d dimer|디다이머'],add:['I7439:기타 및 상세불명 색전증 및 혈전증'],sev:'bad',note:SRC2+' 2-2. r/o 상병으로 기재'},
+ {type:'order',title:'CK-MB → Z035 (주진단 불가)',when:['ck-mb|ckmb|ck mb'],add:['Z035:기타 의심되는 심혈관 질환의 관찰'],sev:'bad',note:SRC2+' 2-3. Z035는 주진단 사용 불가 — 부상병으로'},
+ {type:'order',title:'HbA1c → R730',when:['a1c|당화혈색소'],add:['R730:이상포도당내성검사'],sev:'bad',note:SRC2+' 2-4. 당뇨병 코드(E10~E14)와 동시 분류 불가'},
+ {type:'code',title:'R730 + 당뇨병 코드(E10~E14) 동시 불가',when:['R730','E10*|E11*|E12*|E13*|E14*'],avoid:['R730:이상포도당내성검사'],sev:'bad',note:SRC2+' 2-4. 당뇨 환자는 E코드만, R730은 당뇨 아닌 경우에만'},
+ {type:'doc',title:'Abd CT + Chest CT 동시 촬영',when:['abd|복부|abdomen','chest ct|흉부 ct|chest-ct'],sev:'warn',note:SRC2+' 2-5. 경과기록지에 각각 소견 작성, 진단명 각각 부여'},
+ {type:'code',title:'Abd CT에 A099만으로는 수가 불인정',when:['abd|복부|abdomen','A099'],avoid:['A099:상세불명 기원의 위장염 및 결장염'],sev:'bad',note:SRC2+' 2-6. 보완상병 입력 (CT 적응증이 되는 의심 상병 추가)'},
+ {type:'code',title:'S010 + Brain CT → S0600 같이 입력',when:['S010','brain|두부|head'],add:['S0600:열린 두개내상처가 없는 진탕'],sev:'bad',note:SRC2+' 2-7'},
+ {type:'code',title:'R53(전신쇠약) 사용 불가',when:['R53'],avoid:['R53:전신쇠약'],add:['F480:신경무력증'],sev:'bad',note:SRC1+' 2. 약제 또는 PHx에 맞는 코드로 부여 (예시 F480)'},
+ {type:'code',title:'R33(소변정체) → R391',when:['R33'],avoid:['R33:소변정체'],add:['R391:기타 배뇨곤란'],sev:'bad',note:SRC2+' 3-1'},
+ {type:'code',title:'J00/J060/J069/J209 → J40',when:['J00|J060|J069|J209'],avoid:['J00:급성 비인두염','J060:급성 후두인두염','J069:상세불명의 급성 상기도감염','J209:상세불명의 급성 기관지염(15세 미만)'],add:['J40:급성인지 만성인지 명시되지 않은 기관지염'],sev:'bad',note:SRC1+' 4'},
+ {type:'code',title:'T140~T144(타박상 NOS 등) 사용 불가',when:['T140|T141|T142|T143|T144'],avoid:['T140:상세불명 부위의 표재성 손상','T141:상세불명 부위의 열린상처(동물물림 NOS)','T142:상세불명 부위의 골절','T143:상세불명 부위의 탈구·염좌','T144:상세불명 부위의 신경손상'],sev:'bad',note:SRC1+' 1, 8. 해당 부위 S코드로 입력. 동물 물림은 주) S코드 + 부) W540 등 외인코드'},
+ {type:'code',title:'V/W/X/Y 외인코드는 주진단 불가',when:['V*|W*|X*|Y*'],sev:'warn',note:SRC1+' 1. 손상 결과를 나타내는 S/T 코드를 주진단으로, 외인코드는 부진단. 예) 주) S508, 부) W540'},
+ {type:'code',title:'주진단 지양 R코드',when:['R51|R42|R99|R54|R413'],avoid:['R51:두통','R42:어지럼증 및 어지럼','R99:사망','R54:노쇠','R413:기타 기억상실'],sev:'warn',note:SRC1+' 2. 진단으로 대체 가능하면 주진단에 쓰지 말 것'},
+ {type:'code',title:'Z035 주진단 불가',when:['Z035'],sev:'warn',note:SRC2+' 2-3. 부상병으로만'},
+ {type:'doc',title:'Suture 시 wound 크기(cm) 기재',when:['suture|봉합|laceration|열상|lac'],sev:'warn',note:SRC2+' 3-3. 경과기록에 wound \'cm\' 기재'},
+ {type:'doc',title:'인수인계·재내원 시 CC, PI, IMP, Onset 기재',when:['인수인계|재내원|revisit'],sev:'info',note:SRC1+' 5'},
+ {type:'doc',title:'발병시간: 2일 이내는 시각까지','when':['onset|발병'],sev:'info',note:SRC1+' 6. NEDIS 전송 필요. 예) 2일전 7시'},
+];
+
+/* ---------- 저장소 ---------- */
+const KEY='dscode_v2';
+let DB={rules:[],logs:[],codeNotes:{},recent:[],settings:{key:'',model:'claude-sonnet-5-5'}};
+function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6)}
+function load(){
+  try{const s=localStorage.getItem(KEY);if(s){const d=JSON.parse(s);DB={...DB,...d};DB.settings={...{key:'',model:'claude-sonnet-5-5'},...(d.settings||{})};return}}catch(e){}
+  try{const old=localStorage.getItem('dscode_v1');if(old){const d=JSON.parse(old);DB.rules=d.rules||[];DB.logs=d.logs||[]}}catch(e){}
+  if(!DB.rules.length)DB.rules=SEED_RULES.map(r=>({...r,id:uid(),src:'seed'}));
+  save();
+}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(DB))}catch(e){}}
+
+/* ---------- 코드표 ---------- */
+let KCD=[],KMAP={},KCD_SRC='내장 임시 코드표';
+function setKcd(arr,src){KCD=arr.filter(r=>r&&r[0]);KMAP={};for(const r of KCD)KMAP[norm(r[0])]=r;KCD_SRC=src;updKcdStat()}
+function updKcdStat(){const s=`${KCD_SRC} · ${KCD.length.toLocaleString()}개 코드`;document.getElementById('kcdStat').textContent=s+(KCD_SRC.includes('임시')?' — 공식 코드표 적용 전까지 코드명은 참고용이며 EMR에서 확인하세요.':' — 심평원 상병마스터(2025-09-30): 불완전코드·주상병불가·성별·연령 속성 포함');document.getElementById('hdStat').textContent=KCD_SRC.includes('임시')?'임시 코드표':'심평원 상병마스터'}
+async function loadKcdJson(){
+  try{const r=await fetch('kcd.json',{cache:'no-cache'});if(!r.ok)throw 0;const d=await r.json();if(Array.isArray(d)&&d.length>100){setKcd(d,'심평원 상병마스터 KCD-8');return}}catch(e){}
+  setKcd(KCD_BUILTIN,'내장 임시 코드표');
+}
+function loadKcdFile(f){
+  if(!f)return;const rd=new FileReader();
+  rd.onload=()=>{try{let d;const t=rd.result.trim();
+    if(t.startsWith('['))d=JSON.parse(t);
+    else d=t.split(/\r?\n/).map(l=>l.split(/[,\t]/).map(x=>x.replace(/^"|"$/g,'').trim())).filter(r=>r[0]&&/^[A-Z]\d/i.test(r[0]));
+    if(d.length<10)throw 0;setKcd(d,'KCD-8 (불러온 파일)');toast(d.length+'개 코드 불러옴')}catch(e){toast('파일 형식을 읽지 못했습니다')}};
+  rd.readAsText(f,'utf-8');
+}
+function kname(code){const r=KMAP[norm(code)];return r?r[1]:''}
+
+/* ---------- 유틸 ---------- */
+function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),1500)}
+function copyText(s){const done=()=>{toast('복사: '+s.slice(0,40));bump(s)};if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(s).then(done,()=>fallbackCopy(s,done))}else fallbackCopy(s,done)}
+function fallbackCopy(s,done){const ta=document.createElement('textarea');ta.value=s;document.body.appendChild(ta);ta.select();try{document.execCommand('copy')}catch(e){}ta.remove();done()}
+function bump(s){const c=norm((s.match(/^[A-Z]\d{2,4}/i)||[''])[0]);if(!c||!/^[A-Z]\d/.test(c))return;DB.recent=[c,...DB.recent.filter(x=>x!==c)].slice(0,30);save()}
+function esc(s){return String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
+function parseCodes(str){return (str||'').split(',').map(s=>s.trim()).filter(Boolean).map(s=>{const i=s.indexOf(':');return i<0?{code:norm(s),name:''}:{code:norm(s.slice(0,i)),name:s.slice(i+1).trim()}})}
+function codesToStr(arr){return (arr||[]).map(c=>typeof c==='string'?c:c.code+(c.name?':'+c.name:'')).join(', ')}
+function norm(c){return String(c||'').replace(/\./g,'').toUpperCase().trim()}
+function isCodeCond(s){return /^[A-Z](\d{2}|\d*\*)$/i.test(s.trim().replace(/\./g,''))||/^[A-Z]\d{2}/i.test(s.trim())}
+function kflags(code){const r=KMAP[norm(code)];return r&&r[3]||''}
+function flagTags(code){const f=kflags(code);if(!f)return '';let h='';
+  if(f.includes('I'))h+='<span class="tag bad" title="세분류가 있는 상위코드 — 청구 불가">불완전코드</span>';
+  if(f.includes('P'))h+='<span class="tag warn" title="주상병으로 사용 불가">주상병불가</span>';
+  if(f.includes('F'))h+='<span class="tag">여성</span>';if(f.includes('M'))h+='<span class="tag">남성</span>';
+  const a=f.match(/a(\d*)-(\d*)/);if(a)h+=`<span class="tag">연령 ${a[1]||'0'}~${a[2]||''}</span>`;
+  const l=f.match(/L(\d)/);if(l)h+=`<span class="tag">법정감염병 ${l[1]}급</span>`;return h}
+function codeStatus(code){ // 규칙·코드표상 상태: bad/warn/null
+  const f=kflags(code);if(f.includes('I'))return {sev:'bad',title:'불완전코드 — 세분류 코드를 쓰세요'};
+  const inp={low:'',codes:[norm(code)]};let st=f.includes('P')?{sev:'warn',title:'주상병 사용 불가'}:null;
+  for(const r of DB.rules){if(r.type!=='code'||!ruleHits(r,inp))continue;const ev=evalRule(r,inp);
+    if(ev.present.length||(!ev.avoidList.length)){if(r.sev==='bad')return {sev:'bad',title:r.title};if(r.sev==='warn'&&!st)st={sev:'warn',title:r.title}}}
+  return st;
+}
+function codeChip(c,opt){const o=typeof c==='string'?parseCodes(c)[0]:c;const nm=o.name||kname(o.code);const st=codeStatus(o.code);const cls=st?st.sev:'';
+  return `<span class="code ${cls}" title="${st?esc(st.title):'클릭하면 복사'}" onclick="copyText('${o.code}')"><b>${o.code}</b>${nm?'<span>'+esc(nm)+'</span>':''}${st?`<span class="tag ${st.sev}">${st.sev==='bad'?'불가':'지양'}</span>`:''}</span>`}
+
+/* ---------- 규칙 엔진 ---------- */
+function analyze(text){const low=text.toLowerCase();const codes=[...new Set((text.match(/\b[A-Za-z]\d{2}(?:\.?\d{1,2})?\b/g)||[]).map(norm))];return {low,codes}}
+function condMatch(cond,inp){return cond.split('|').some(alt=>{alt=alt.trim();if(!alt)return false;
+    if(isCodeCond(alt)){const a=norm(alt);if(a.endsWith('*')){const p=a.slice(0,-1);return inp.codes.some(c=>c.startsWith(p))}return inp.codes.some(c=>c===a||c.startsWith(a)&&a.length>=3)}
+    return inp.low.includes(alt.toLowerCase())})}
+function ruleHits(rule,inp){return (rule.when||[]).length>0&&rule.when.every(c=>condMatch(c,inp))}
+function evalRule(rule,inp){
+  const addList=(rule.add||[]).map(a=>typeof a==='string'?parseCodes(a)[0]:a);
+  const avoidList=(rule.avoid||[]).map(a=>typeof a==='string'?parseCodes(a)[0]:a);
+  const present=avoidList.filter(a=>inp.codes.some(c=>c===a.code||(c.startsWith(a.code)&&a.code.length>=3)));
+  const satisfied=addList.length===0||addList.some(a=>inp.codes.some(c=>c===a.code||c.startsWith(a.code)));
+  return {addList,avoidList,present,satisfied};
+}
+function checkHtml(text){ // returns {html,n,codes}
+  const inp=analyze(text);let html='',n=0;
+  for(const r of DB.rules){
+    if(!ruleHits(r,inp))continue;const ev=evalRule(r,inp);
+    if(r.type==='order'){
+      if(ev.satisfied)html+=`<div class="alert ok"><div class="t">✔ ${esc(r.title)}</div><div class="mut">필요 상병 있음</div></div>`;
+      else{n++;html+=`<div class="alert ${r.sev||'bad'}"><div class="t">상병 누락 — ${esc(r.title)}</div><div>다음 중 하나 입력:</div><div>${ev.addList.map(c=>codeChip(c)).join('')}</div><div class="mut">${esc(r.note||'')}</div></div>`}
+    }else if(r.type==='code'){
+      if(ev.avoidList.length&&!ev.present.length&&!(ev.addList.length&&!ev.satisfied))continue;n++;
+      html+=`<div class="alert ${r.sev||'bad'}"><div class="t">${esc(r.title)}</div>`;
+      if(ev.present.length)html+=`<div>문제 코드: ${ev.present.map(c=>codeChip(c)).join('')}</div>`;
+      if(ev.addList.length)html+=`<div>${ev.satisfied?'대체/추가 상병 있음':'대체/추가 상병:'} ${ev.addList.map(c=>codeChip(c)).join('')}</div>`;
+      html+=`<div class="mut">${esc(r.note||'')}</div></div>`;
+    }else{n++;html+=`<div class="alert ${r.sev||'info'}"><div class="t">기록 — ${esc(r.title)}</div><div class="mut">${esc(r.note||'')}</div></div>`}
+  }
+  return {html,n,codes:inp.codes};
+}
+function runCheck(){
+  const text=document.getElementById('chkIn').value.trim();const out=document.getElementById('chkOut');if(!text){out.innerHTML='';return}
+  const r=checkHtml(text);
+  const hdr=`<div class="card"><div class="mut">인식한 코드: ${r.codes.length?r.codes.map(c=>codeChip(c)).join(''):'없음'}</div></div>`;
+  let html=r.html;
+  if(!html)html='<div class="alert info">해당하는 규칙이 없습니다. 모르는 약·검사면 규칙 탭에서 추가하세요.</div>';
+  else if(r.n===0)html='<div class="alert ok"><div class="t">문제 없음</div></div>'+html;
+  out.innerHTML=hdr+html;
+}
+
+/* ---------- 검색 ---------- */
+const TOKMAP={'열상':'열린상처','찢긴상처':'열린상처','타박':'타박상','멍':'타박상','삠':'염좌','fx':'골절','lac':'열린상처','염좌':'염좌'};
+function tokens(q){return q.toLowerCase().replace(/[()\[\]/,.]/g,' ').split(/\s+/).filter(Boolean).map(t=>TOKMAP[t]||t)}
+function searchCodes(q,limit){
+  const toks=tokens(q);if(!toks.length)return [];
+  const qn=norm(q.replace(/\s+/g,''));const scores=new Map();const add=(code,s,why)=>{code=norm(code);const o=scores.get(code)||{s:0,why:[]};if(s>o.s)o.s=s;if(why&&!o.why.includes(why))o.why.push(why);scores.set(code,o)};
+  // 동의어
+  const ql=q.toLowerCase().trim();
+  const re=s=>s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');const qns=ql.replace(/\s+/g,'');
+  for(const s of SYN_BUILTIN){const hit=s.t.some(t=>{t=t.toLowerCase();if(t===ql||t.replace(/\s+/g,'')===qns||toks.includes(t))return true;
+      if(ql.length>=2&&new RegExp('(^|\\s)'+re(ql)+'(\\s|$)').test(t))return true;
+      return t.length>=3&&new RegExp('(^|\\s)'+re(t)+'(\\s|$)').test(ql)});
+    if(hit)s.codes.forEach((c,i)=>{if(KMAP[norm(c)])add(c,70-i,'동의어: '+s.t[0]+(s.hint?' — '+s.hint:''))})}
+  // 코드표
+  if(/^[A-Z]\d/.test(qn)){for(const r of KCD){const c=norm(r[0]);if(c===qn)add(c,100);else if(c.startsWith(qn))add(c,85)}}
+  for(const r of KCD){const ko=((r[1]||'')+' '+(r[4]||'')).toLowerCase(),en=(r[2]||'').toLowerCase();
+    const allKo=toks.every(t=>ko.includes(t)),allEn=toks.every(t=>en.includes(t));
+    if(allKo)add(r[0],60-Math.min(ko.length,40)/4);else if(allEn)add(r[0],50-Math.min(en.length,60)/6);
+    else{const part=toks.filter(t=>t.length>=2&&(ko.includes(t)||en.includes(t))).length;if(part&&part>=Math.ceil(toks.length/2))add(r[0],20+part*5)}}
+  return [...scores.entries()].sort((a,b)=>b[1].s-a[1].s).slice(0,limit||40).map(([c,o])=>({code:c,row:KMAP[c],...o}));
+}
+function resRow(x){const r=x.row||[x.code,'',''];const st=codeStatus(x.code);const note=DB.codeNotes[x.code];
+  return `<div class="res"><span class="c" onclick="copyText('${x.code}')">${x.code}</span><div class="n"><div>${esc(r[1]||'(코드표에 없음)')} ${st?`<span class="tag ${st.sev}" title="${esc(st.title)}">${st.sev==='bad'?'사용불가':'지양'}</span>`:''}${flagTags(x.code)}${DB.recent.includes(x.code)?'<span class="tag">최근</span>':''}</div><div class="en">${esc(r[2]||'')}${r[4]?' · '+esc(r[4]):''}</div>${x.why&&x.why.length?`<div class="mut">${esc(x.why[0])}</div>`:''}${note?`<div class="note">메모: ${esc(note)}</div>`:''}</div><button class="btn sec sm" onclick="noteCode('${x.code}')">메모</button></div>`}
+function noteCode(code){const v=prompt(code+' 메모 (예: 심사팀 선호, 삭감됨)',DB.codeNotes[code]||'');if(v===null)return;if(v.trim())DB.codeNotes[code]=v.trim();else delete DB.codeNotes[code];save();runSearch()}
+function runSearch(){
+  const q=document.getElementById('srchIn').value.trim();const out=document.getElementById('srchOut');const st=document.getElementById('srchStat');
+  if(!q){out.innerHTML=DB.recent.length?`<div class="card"><h3>최근 사용</h3>${DB.recent.map(c=>codeChip(c)).join('')}</div>`:'';st.textContent='';return}
+  const hits=searchCodes(q);
+  const toks=q.toLowerCase().split(/\s+/);
+  const rules=DB.rules.filter(r=>{const t=ruleText(r);return toks.every(k=>t.includes(k)||t.includes(k.replace(/\./g,'')))});
+  st.textContent=hits.length?hits.length+'개':'코드표에 없음 — 다른 표현으로 검색하거나 추천 탭을 쓰세요';
+  out.innerHTML=(hits.length?`<div class="card">${hits.map(resRow).join('')}</div>`:'')+(rules.length?`<div class="card"><h3>관련 병원 규칙</h3>${rules.map(r=>ruleCard(r,false)).join('')}</div>`:'');
+}
+
+/* ---------- AI 추천 ---------- */
+function maskPHI(t){
+  return t.replace(/\d{6}\s*[-–]\s*\d{7}/g,'[주민번호]').replace(/0\d{1,2}[-\s.]?\d{3,4}[-\s.]?\d{4}/g,'[전화]').replace(/\d{6,}/g,'[번호]');
+}
+function rulesForPrompt(){
+  return DB.rules.map(r=>{let s='- '+r.title;if((r.add||[]).length)s+=' | 필요/대체: '+codesToStr(r.add);if((r.avoid||[]).length)s+=' | 사용불가/지양: '+codesToStr(r.avoid);if(r.note)s+=' | '+r.note;return s}).join('\n');
+}
+function buildSystem(){
+  return `당신은 한국 병원 응급실의 보험심사·의무기록 코딩 전문가입니다. 의사가 붙여넣은 가명화된 응급실 의무기록을 읽고, 건강보험 청구 시 삭감되지 않을 KCD-8(한국표준질병·사인분류) 상병코드를 추천합니다.
+
+원칙:
+1. 코드는 KCD-8 형식으로 점(.) 없이 씁니다 (예: K297, S0600, I7439). 가능한 한 4자리 이상 세분류까지 씁니다.
+2. 주진단 1개, 부진단 0~5개, 그리고 시행한 검사에 대응하는 r/o(의심) 상병을 구분합니다.
+3. 기록에 근거가 없는 진단은 넣지 않습니다. 확진되지 않은 것은 "상세불명의" 또는 증상 코드나 r/o 상병으로 둡니다. 단, 아래 병원 규칙에서 지양하는 R코드는 대체 가능한 진단이 있으면 피합니다.
+4. 처방·검사·처치가 있으면 그 급여 인정에 필요한 상병이 빠지지 않게 합니다.
+5. 아래 '동신병원 의무기록실·보험심사 규칙'을 반드시 따릅니다. 규칙과 충돌하는 코드는 절대 추천하지 않습니다.
+6. 기록 보완이 필요한 점(예: wound 크기 미기재, 발병시각 미기재, CT 소견 미기재)이 있으면 documentation에 적습니다.
+7. 세분류(4~5자리)가 있는 상위코드(예: I10, R31, J45)는 '불완전코드'로 청구가 거절되므로 반드시 가장 세분화된 코드까지 씁니다. 외인코드(V,W,X,Y)와 일부 Z코드는 주진단으로 쓸 수 없습니다.
+8. 확신이 낮은 코드는 reason에 그 이유와 대안을 적습니다. 코드가 KCD-8에 실제로 존재하는지 확신이 없으면 "코드 확인 필요"라고 적습니다.
+
+동신병원 의무기록실·보험심사 규칙:
+${rulesForPrompt()}
+
+출력은 아래 JSON만 (설명문 없이):
+{"main":{"code":"","name":"","reason":""},
+ "sub":[{"code":"","name":"","reason":""}],
+ "ro":[{"code":"","name":"","reason":"어떤 검사 때문인지"}],
+ "alternatives":[{"code":"","name":"","reason":"주진단 대안과 선택 기준"}],
+ "warnings":["삭감 위험이나 규칙 관련 주의"],
+ "documentation":["기록 보완 사항"]}`;
+}
+function clearAI(){document.getElementById('aiNote').value='';document.getElementById('aiOrders').value='';document.getElementById('aiOut').innerHTML=''}
+async function runAI(){
+  const note=document.getElementById('aiNote').value.trim();const orders=document.getElementById('aiOrders').value.trim();const out=document.getElementById('aiOut');
+  if(!note){toast('의무기록을 입력하세요');return}
+  if(!DB.settings.key){out.innerHTML='<div class="alert warn"><div class="t">API 키가 없습니다</div>설정 탭에서 Claude API 키를 저장하세요.</div>';return}
+  const masked=maskPHI(note);
+  const btn=document.getElementById('aiBtn');btn.disabled=true;btn.innerHTML='<span class="spin"></span>추천 중…';
+  out.innerHTML=`<div class="card"><details><summary>전송한 내용 (개인정보 자동 가림 적용)</summary><pre class="ref" style="margin-top:8px">${esc(masked)}${orders?'\n\n[처방·검사·처치] '+esc(orders):''}</pre></details></div>`;
+  try{
+    const user=`[의무기록]\n${masked}\n\n[처방·검사·처치]\n${orders||'(기재 없음)'}`;
+    const txt=await callClaude(buildSystem(),user,2500);
+    const j=parseJSON(txt);
+    if(!j||!j.main){out.innerHTML+=`<div class="alert warn"><div class="t">응답을 해석하지 못했습니다</div><pre class="ref">${esc(txt)}</pre></div>`;return}
+    renderAI(j,orders);
+  }catch(e){out.innerHTML+=`<div class="alert bad"><div class="t">호출 실패</div>${esc(e.message||e)}<div class="mut">병원 네트워크에서 api.anthropic.com 접속이 막혀 있거나 키가 잘못되었을 수 있습니다. 설정 탭의 연결 테스트로 확인하세요.</div></div>`}
+  finally{btn.disabled=false;btn.textContent='상병 추천'}
+}
+function parseJSON(t){try{return JSON.parse(t)}catch(e){}const m=t.match(/\{[\s\S]*\}/);if(m){try{return JSON.parse(m[0])}catch(e){}}return null}
+function dxCard(label,d){if(!d||!d.code)return '';const code=norm(d.code);const inTable=!!KMAP[code];const off=kname(code);
+  return `<div class="dx"><div class="hd"><span class="tag">${label}</span>${codeChip({code,name:off||d.name||''})}${!inTable?`<span class="tag warn" title="코드표에서 찾지 못함">코드 확인</span>`:''}${label==='주진단'&&kflags(code).includes('P')?'<span class="tag bad">주상병 불가 — 다른 주진단 필요</span>':''}${flagTags(code).replace(/<span class="tag warn"[^>]*>주상병불가<\/span>/,'')}${off&&d.name&&off!==d.name?`<span class="mut">(모델 표기: ${esc(d.name)})</span>`:''}</div><div class="why">${esc(d.reason||'')}</div></div>`}
+function renderAI(j,orders){
+  const out=document.getElementById('aiOut');
+  const all=[j.main,...(j.sub||[]),...(j.ro||[])].filter(x=>x&&x.code).map(x=>norm(x.code));
+  const chk=checkHtml([orders,...all].join(', '));
+  const summary=['주) '+norm(j.main.code)+' '+(kname(j.main.code)||j.main.name||''),...(j.sub||[]).map(s=>'부) '+norm(s.code)+' '+(kname(s.code)||s.name||'')),...(j.ro||[]).map(s=>'r/o '+norm(s.code)+' '+(kname(s.code)||s.name||''))].join('\n');
+  let h=`<div class="card"><div class="row" style="margin:0 0 8px"><h3 style="margin:0;flex:1">추천 상병</h3><button class="btn sec sm" onclick="copyText(${JSON.stringify(summary).replace(/"/g,'&quot;')})">전체 복사</button></div>`;
+  h+=dxCard('주진단',j.main);
+  (j.sub||[]).forEach(s=>h+=dxCard('부진단',s));
+  (j.ro||[]).forEach(s=>h+=dxCard('r/o',s));
+  if((j.alternatives||[]).length){h+='<details style="margin-top:8px"><summary>주진단 대안</summary>';(j.alternatives||[]).forEach(s=>h+=dxCard('대안',s));h+='</details>'}
+  h+='</div>';
+  if((j.warnings||[]).length)h+=`<div class="alert warn"><div class="t">주의</div><ul style="margin:4px 0 0 18px;padding:0">${j.warnings.map(w=>'<li>'+esc(w)+'</li>').join('')}</ul></div>`;
+  if((j.documentation||[]).length)h+=`<div class="alert info"><div class="t">기록 보완</div><ul style="margin:4px 0 0 18px;padding:0">${j.documentation.map(w=>'<li>'+esc(w)+'</li>').join('')}</ul></div>`;
+  h+=`<div class="card"><h3>병원 규칙 자동 점검 ${chk.n?`<span class="tag bad">${chk.n}건</span>`:'<span class="tag" style="background:#e8f6ee;color:var(--ok)">이상 없음</span>'}</h3>${chk.html||'<div class="mut">해당 규칙 없음</div>'}</div>`;
+  h+=`<div class="mut" style="margin:4px 2px">추천은 참고용입니다. 최종 상병은 의사가 진료 내용에 맞게 확정하세요.</div>`;
+  out.innerHTML+=h;
+}
+async function callClaude(system,user,maxTokens){
+  const model=DB.settings.model||'claude-sonnet-5-5';
+  const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'content-type':'application/json','x-api-key':DB.settings.key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+    body:JSON.stringify({model,max_tokens:maxTokens||1000,system,messages:[{role:'user',content:user}]})});
+  if(!r.ok){let m='HTTP '+r.status;try{const e=await r.json();m+=' '+(e.error&&e.error.message||'')}catch(x){}throw new Error(m)}
+  const d=await r.json();return (d.content||[]).filter(c=>c.type==='text').map(c=>c.text).join('');
+}
+
+/* ---------- 설정 ---------- */
+function loadSettingsUI(){const s=DB.settings;document.getElementById('setKey').value=s.key||'';const sel=document.getElementById('setModel');const std=[...sel.options].map(o=>o.value);
+  if(std.includes(s.model)){sel.value=s.model}else{sel.value='custom';document.getElementById('setModelCustom').value=s.model||'';document.getElementById('setModelCustom').style.display='block'}}
+document.getElementById('setModel').onchange=e=>{document.getElementById('setModelCustom').style.display=e.target.value==='custom'?'block':'none'};
+function saveSettings(){const sel=document.getElementById('setModel').value;DB.settings.key=document.getElementById('setKey').value.trim();DB.settings.model=sel==='custom'?document.getElementById('setModelCustom').value.trim():sel;save();toast('저장됨');updAiHint()}
+async function testAPI(){saveSettings();const st=document.getElementById('setStat');st.textContent='테스트 중…';try{const t=await callClaude('한 단어로만 답하세요.','연결 확인. "OK"라고만 답하세요.',10);st.textContent='연결 성공: '+t.trim().slice(0,20)}catch(e){st.textContent='실패: '+(e.message||e)}}
+function updAiHint(){document.getElementById('aiHint').textContent=DB.settings.key?('모델: '+DB.settings.model):'설정 탭에서 API 키를 먼저 저장하세요'}
+
+/* ---------- 요청 기록 ---------- */
+function addLog(){
+  const g=id=>document.getElementById(id).value.trim();
+  const l={id:uid(),date:g('lgDate')||new Date().toISOString().slice(0,10),ctx:g('lgCtx'),from:norm(g('lgFrom')),to:g('lgTo'),kind:g('lgKind'),why:g('lgWhy')};
+  if(!l.ctx&&!l.from&&!l.to){toast('내용을 입력하세요');return}
+  DB.logs.unshift(l);save();['lgCtx','lgFrom','lgTo','lgWhy'].forEach(i=>document.getElementById(i).value='');renderLogs();toast('기록됨');
+}
+function delLog(id){if(!confirm('이 기록을 삭제할까요?'))return;DB.logs=DB.logs.filter(l=>l.id!==id);save();renderLogs()}
+function promoteLog(id){
+  const l=DB.logs.find(x=>x.id===id);if(!l)return;showTab('rules');
+  document.getElementById('rfId').value='';document.getElementById('rfTitle').textContent='규칙 추가 (요청기록에서)';
+  document.getElementById('rfType').value=l.from?'code':'order';
+  document.getElementById('rfTitleIn').value=(l.from?l.from+' → ':'')+(l.to||'')+(l.ctx?' ('+l.ctx+')':'');
+  document.getElementById('rfWhen').value=[l.ctx,l.from].filter(Boolean).join(', ');
+  document.getElementById('rfAdd').value=l.to;document.getElementById('rfAvoid').value=l.kind==='교체'?l.from:'';
+  document.getElementById('rfSev').value='bad';document.getElementById('rfNote').value='심사팀 요청 '+l.date+(l.why?': '+l.why:'');window.scrollTo(0,0);
+}
+function renderLogs(){
+  const el=document.getElementById('logList');if(!DB.logs.length){el.innerHTML='<div class="alert info">아직 기록이 없습니다.</div>';return}
+  el.innerHTML='<div class="card"><table><tr><th>날짜</th><th>상황</th><th>원래→요청</th><th></th></tr>'+DB.logs.map(l=>`<tr><td>${esc(l.date)}</td><td>${esc(l.ctx)}<div class="mut">${esc(l.why)}</div></td><td>${esc(l.from)} → ${esc(l.to)}<div class="mut">${esc(l.kind)}</div></td><td><button class="btn sec sm" onclick="promoteLog('${l.id}')">규칙화</button><br><button class="btn danger sm" style="margin-top:4px" onclick="delLog('${l.id}')">삭제</button></td></tr>`).join('')+'</table></div>';
+}
+
+/* ---------- 규칙 편집 ---------- */
+function ruleCard(r,editable){
+  const t={order:'처방→상병',code:'코드',doc:'기록'}[r.type]||r.type;
+  return `<div class="rule"><div class="h"><div><span class="tag ${r.type}">${t}</span><b>${esc(r.title)}</b></div>
+   ${editable?`<div><button class="btn sec sm" onclick="editRule('${r.id}')">수정</button> <button class="btn danger sm" onclick="delRule('${r.id}')">삭제</button></div>`:''}</div>
+   <div class="mut">조건: ${esc((r.when||[]).join(' + '))}</div>
+   ${(r.add||[]).length?`<div>필요/대체: ${r.add.map(c=>codeChip(c)).join('')}</div>`:''}
+   ${(r.avoid||[]).length?`<div>불가/지양: ${r.avoid.map(c=>{const o=typeof c==='string'?parseCodes(c)[0]:c;return `<span class="code" onclick="copyText('${o.code}')"><b>${o.code}</b><span>${esc(o.name||kname(o.code))}</span></span>`}).join('')}</div>`:''}
+   <div class="mut">${esc(r.note||'')}</div></div>`;
+}
+function ruleText(r){return [r.title,(r.when||[]).join(' '),codesToStr(r.add),codesToStr(r.avoid),r.note].join(' ').toLowerCase()}
+function resetRuleForm(){['rfId','rfTitleIn','rfWhen','rfAdd','rfAvoid','rfNote'].forEach(i=>document.getElementById(i).value='');document.getElementById('rfType').value='order';document.getElementById('rfSev').value='bad';document.getElementById('rfTitle').textContent='규칙 추가'}
+function saveRule(){
+  const g=id=>document.getElementById(id).value.trim();const when=g('rfWhen').split(',').map(s=>s.trim()).filter(Boolean);
+  if(!g('rfTitleIn')||!when.length){toast('제목과 조건은 필수');return}
+  const r={type:g('rfType'),title:g('rfTitleIn'),when,add:parseCodes(g('rfAdd')),avoid:parseCodes(g('rfAvoid')),sev:g('rfSev'),note:g('rfNote'),src:'user'};
+  const id=g('rfId');if(id){const i=DB.rules.findIndex(x=>x.id===id);if(i>=0)DB.rules[i]={...DB.rules[i],...r}}else{r.id=uid();DB.rules.unshift(r)}
+  save();resetRuleForm();renderRules();toast('저장됨');
+}
+function editRule(id){const r=DB.rules.find(x=>x.id===id);if(!r)return;
+  document.getElementById('rfId').value=r.id;document.getElementById('rfTitle').textContent='규칙 수정';document.getElementById('rfType').value=r.type;document.getElementById('rfTitleIn').value=r.title;
+  document.getElementById('rfWhen').value=(r.when||[]).join(', ');document.getElementById('rfAdd').value=codesToStr(r.add);document.getElementById('rfAvoid').value=codesToStr(r.avoid);
+  document.getElementById('rfSev').value=r.sev||'bad';document.getElementById('rfNote').value=r.note||'';window.scrollTo(0,0)}
+function delRule(id){if(!confirm('이 규칙을 삭제할까요?'))return;DB.rules=DB.rules.filter(x=>x.id!==id);save();renderRules()}
+function renderRules(){const q=document.getElementById('ruleFilter').value.trim().toLowerCase();const list=DB.rules.filter(r=>!q||ruleText(r).includes(q));
+  document.getElementById('ruleList').innerHTML=`<div class="mut" style="margin:0 0 6px">${list.length}개</div>`+list.map(r=>ruleCard(r,true)).join('')}
+
+/* ---------- 분석 ---------- */
+function renderStats(){
+  const el=document.getElementById('statsOut');if(!DB.logs.length){el.innerHTML='<div class="alert info">요청기록이 쌓이면 반복 패턴이 여기에 나옵니다.</div>';return}
+  const pair={},ctx={},month={};
+  for(const l of DB.logs){const k=(l.from||'(없음)')+' → '+(l.to||'?');pair[k]=(pair[k]||0)+1;const m=(l.date||'').slice(0,7);month[m]=(month[m]||0)+1;(l.ctx||'').split(/[,\s/]+/).filter(w=>w.length>1).forEach(w=>{w=w.toLowerCase();ctx[w]=(ctx[w]||0)+1})}
+  const top=o=>Object.entries(o).sort((a,b)=>b[1]-a[1]);
+  const hasRule=k=>{const from=k.split(' → ')[0];return DB.rules.some(r=>(r.when||[]).some(w=>w.toUpperCase().includes(from)))};
+  el.innerHTML=`<div class="card"><h3>반복되는 요청 (원래 → 요청)</h3><table><tr><th>패턴</th><th>횟수</th><th>규칙</th></tr>${top(pair).map(([k,v])=>`<tr><td>${esc(k)}</td><td>${v}</td><td>${hasRule(k)?'<span class="tag">있음</span>':(v>=2?'<span class="tag code">없음 — 규칙화 권장</span>':'')}</td></tr>`).join('')}</table></div>
+  <div class="card"><h3>자주 나오는 상황 키워드</h3>${top(ctx).slice(0,20).map(([k,v])=>`<span class="code"><b>${esc(k)}</b>${v}</span>`).join('')}</div>
+  <div class="card"><h3>월별 요청 건수</h3><table>${top(month).sort((a,b)=>a[0]<b[0]?1:-1).map(([k,v])=>`<tr><td>${esc(k)}</td><td>${v}</td></tr>`).join('')}</table></div>`;
+}
+
+/* ---------- 데이터 ---------- */
+function exportData(){const d={...DB,settings:{...DB.settings,key:''}};document.getElementById('dataBox').value=JSON.stringify(d,null,1);toast('내보내기 완료 (API 키 제외)')}
+function importData(){try{const d=JSON.parse(document.getElementById('dataBox').value);if(!d.rules)throw 0;if(!confirm('현재 규칙·기록을 가져온 내용으로 바꿀까요?'))return;const key=DB.settings.key;DB={...DB,...d};DB.settings.key=key||(d.settings&&d.settings.key)||'';save();renderAll();toast('가져오기 완료')}catch(e){toast('형식이 올바르지 않습니다')}}
+function resetSeed(){if(!confirm('규칙을 기본 규칙으로 되돌립니다. 직접 만든 규칙은 지워지고 요청기록은 유지됩니다. 계속할까요?'))return;DB.rules=SEED_RULES.map(r=>({...r,id:uid(),src:'seed'}));save();renderAll();toast('초기화 완료')}
+
+/* ---------- 탭 ---------- */
+function showTab(t){document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.t===t));document.querySelectorAll('.tab').forEach(s=>s.classList.toggle('on',s.id==='tab-'+t));
+  if(t==='stats')renderStats();if(t==='rules')renderRules();if(t==='log')renderLogs();if(t==='search')runSearch();if(t==='set')loadSettingsUI()}
+document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>showTab(b.dataset.t));
+function renderAll(){renderRules();renderLogs();renderStats();updAiHint()}
+load();setKcd(KCD_BUILTIN,'내장 임시 코드표');loadKcdJson();renderAll();loadSettingsUI();
+document.getElementById('lgDate').value=new Date().toISOString().slice(0,10);
+document.getElementById('srchIn').addEventListener('keydown',e=>{if(e.key==='Enter')runSearch()});
+</script>
+</body>
+</html>
