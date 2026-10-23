@@ -475,10 +475,12 @@ function searchCodes(q,limit){
 function resRow(x){const r=x.row||[x.code,'',''];const st=codeStatus(x.code);const note=DB.codeNotes[x.code];
   return `<div class="res"><span class="c" onclick="copyText('${x.code}')">${x.code}</span><div class="n"><div>${esc(r[1]||'(코드표에 없음)')} ${st?`<span class="tag ${st.sev}" title="${esc(st.title)}">${st.sev==='bad'?'사용불가':'지양'}</span>`:''}${flagTags(x.code)}${DB.recent.includes(x.code)?'<span class="tag">최근</span>':''}</div><div class="en">${esc(r[2]||'')}${r[4]?' · '+esc(r[4]):''}</div>${x.why&&x.why.length?`<div class="mut">${esc(x.why[0])}</div>`:''}${note?`<div class="note">메모: ${esc(note)}</div>`:''}</div><button class="btn sec sm" onclick="noteCode('${x.code}')">메모</button></div>`}
 function noteCode(code){const v=prompt(code+' 메모 (예: 심사팀 선호, 삭감됨)',DB.codeNotes[code]||'');if(v===null)return;if(v.trim())DB.codeNotes[code]=v.trim();else delete DB.codeNotes[code];save();runSearch()}
+function removeRecent(c){DB.recent=DB.recent.filter(x=>x!==c);save();runSearch()}
+function clearRecent(){if(!confirm('최근 사용 목록을 모두 지울까요?'))return;DB.recent=[];save();runSearch()}
 function clearSearch(){const i=document.getElementById('srchIn');i.value='';runSearch();i.focus()}
 function runSearch(){
   const q=document.getElementById('srchIn').value.trim();document.getElementById('srchClr').style.display=q?'block':'none';const out=document.getElementById('srchOut');const st=document.getElementById('srchStat');
-  if(!q){out.innerHTML=DB.recent.length?`<div class="card"><h3>최근 사용</h3>${DB.recent.map(c=>codeChip(c)).join('')}</div>`:'';st.textContent='';return}
+  if(!q){out.innerHTML=DB.recent.length?`<div class="card"><div class="row" style="margin:0 0 6px"><h3 style="margin:0;flex:1">최근 사용 <span class="mut" style="font-weight:400">(복사한 순서, 최대 30개 · × 로 개별 삭제)</span></h3><button class="btn sec sm" onclick="clearRecent()">전체 지움</button></div>${DB.recent.map(c=>`<span style="display:inline-flex;align-items:center">${codeChip(c)}<button class="clearbtn" style="display:inline-block;position:static;transform:none;width:22px;height:22px;font-size:15px;margin:0 8px 0 -4px" title="목록에서 제거" onclick="removeRecent('${c}')">×</button></span>`).join('')}</div>`:'';st.textContent='';return}
   const hits=searchCodes(q);
   const toks=q.toLowerCase().split(/\s+/);
   const rules=DB.rules.filter(r=>{const t=ruleText(r);return toks.every(k=>t.includes(k)||t.includes(k.replace(/\./g,'')))});
