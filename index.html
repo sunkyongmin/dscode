@@ -346,6 +346,7 @@ const SEED_RULES=[
  {type:'order',title:'HbA1c → R730',when:['a1c|당화혈색소'],add:['R730:이상포도당내성검사'],sev:'bad',note:SRC2+' 2-4. 당뇨병 코드(E10~E14)와 동시 분류 불가'},
  {type:'code',title:'R730 + 당뇨병 코드(E10~E14) 동시 불가',when:['R730','E10*|E11*|E12*|E13*|E14*'],avoid:['R730:이상포도당내성검사'],sev:'bad',note:SRC2+' 2-4. 당뇨 환자는 E코드만, R730은 당뇨 아닌 경우에만'},
  {type:'doc',title:'Abd CT + Chest CT 동시 촬영',when:['abd ct|abd-ct|abdomen ct|abdominal ct|복부 ct|복부ct|apct|a-p ct','chest ct|chest-ct|흉부 ct|흉부ct'],sev:'warn',note:SRC2+' 2-5. 경과기록지에 각각 소견 작성, 진단명 각각 부여'},
+ {type:'code',title:'위장염 증상에는 A099 대신 K297 또는 K219 (동신병원 관행)',when:['A099'],avoid:['A099:상세불명 기원의 위장염 및 결장염'],add:['K297:상세불명의 위염','K219:식도염을 동반하지 않은 위-식도역류병'],sev:'warn',note:'응급실에서 복통·구토·설사 등으로 A099를 쓸 상황에 실제로는 K297 또는 K219를 주로 사용. 감염성 근거(Qupron 등 항생제)가 있으면 A049.'},
  {type:'code',title:'Abd CT에 A099만으로는 수가 불인정',when:['abd ct|abd-ct|abdomen ct|abdominal ct|복부 ct|복부ct|apct|a-p ct','A099'],avoid:['A099:상세불명 기원의 위장염 및 결장염'],sev:'bad',note:SRC2+' 2-6. 보완상병 입력 (CT 적응증이 되는 의심 상병 추가)'},
  {type:'code',title:'S010 + Brain CT → S0600 같이 입력',when:['S010','brain ct|brain-ct|두부 ct|head ct|b-ct|bct'],add:['S0600:열린 두개내상처가 없는 진탕'],sev:'bad',note:SRC2+' 2-7'},
  {type:'code',title:'R53(전신쇠약) 사용 불가',when:['R53'],avoid:['R53:전신쇠약'],add:['F480:신경무력증'],sev:'bad',note:SRC1+' 2. 약제 또는 PHx에 맞는 코드로 부여 (예시 F480)'},
@@ -368,6 +369,7 @@ function load(){
   try{const s=localStorage.getItem(KEY);if(s){const d=JSON.parse(s);DB={...DB,...d};DB.settings={...{key:'',model:'claude-sonnet-5-5'},...(d.settings||{})};return}}catch(e){}
   try{const old=localStorage.getItem('dscode_v1');if(old){const d=JSON.parse(old);DB.rules=d.rules||[];DB.logs=d.logs||[]}}catch(e){}
   if(!DB.rules.length||DB.rules.every(r=>r.src==='seed'))DB.rules=SEED_RULES.map(r=>({...r,id:uid(),src:'seed'}));
+  else{const have=new Set(DB.rules.map(r=>r.title));SEED_RULES.filter(r=>!have.has(r.title)).forEach(r=>DB.rules.push({...r,id:uid(),src:'seed'}))}
   save();
 }
 function save(){try{localStorage.setItem(KEY,JSON.stringify(DB))}catch(e){}}
@@ -509,10 +511,11 @@ function buildSystem(){
 2. 주진단 1개, 부진단 0~5개, 그리고 시행한 검사에 대응하는 r/o(의심) 상병을 구분합니다.
 3. 기록에 근거가 없는 진단은 넣지 않습니다. 확진되지 않은 것은 "상세불명의" 또는 증상 코드나 r/o 상병으로 둡니다. 단, 아래 병원 규칙에서 지양하는 R코드는 대체 가능한 진단이 있으면 피합니다.
 4. 처방·검사·처치가 있으면 그 급여 인정에 필요한 상병이 빠지지 않게 합니다.
-5. 아래 '동신병원 의무기록실·보험심사 규칙'을 반드시 따릅니다. 규칙과 충돌하는 코드는 절대 추천하지 않습니다.
-6. 기록 보완이 필요한 점(예: wound 크기 미기재, 발병시각 미기재, CT 소견 미기재)이 있으면 documentation에 적습니다.
-7. 세분류(4~5자리)가 있는 상위코드(예: I10, R31, J45)는 '불완전코드'로 청구가 거절되므로 반드시 가장 세분화된 코드까지 씁니다. 외인코드(V,W,X,Y)와 일부 Z코드는 주진단으로 쓸 수 없습니다.
-8. 확신이 낮은 코드는 reason에 그 이유와 대안을 적습니다. 코드가 KCD-8에 실제로 존재하는지 확신이 없으면 "코드 확인 필요"라고 적습니다.
+5. 복통·구토·설사 등 위장관 증상으로 내원해 감염성 근거가 뚜렷하지 않으면, 이 병원은 A099 대신 K297(상세불명의 위염) 또는 K219(식도염을 동반하지 않은 위-식도역류병)를 주진단으로 씁니다. 하복부 압통처럼 국소 소견이 있으면 해당 부위 통증 코드(R1030 등)나 CT 적응증 r/o 상병을 부진단으로 더합니다.
+6. 아래 '동신병원 의무기록실·보험심사 규칙'을 반드시 따릅니다. 규칙과 충돌하는 코드는 절대 추천하지 않습니다.
+7. 기록 보완이 필요한 점(예: wound 크기 미기재, 발병시각 미기재, CT 소견 미기재)이 있으면 documentation에 적습니다.
+8. 세분류(4~5자리)가 있는 상위코드(예: I10, R31, J45)는 '불완전코드'로 청구가 거절되므로 반드시 가장 세분화된 코드까지 씁니다. 외인코드(V,W,X,Y)와 일부 Z코드는 주진단으로 쓸 수 없습니다.
+9. 확신이 낮은 코드는 reason에 그 이유와 대안을 적습니다. 코드가 KCD-8에 실제로 존재하는지 확신이 없으면 "코드 확인 필요"라고 적습니다.
 
 이 응급실의 기록 형식과 약어:
 ${DB.settings.legend||LEGEND_DEFAULT}
