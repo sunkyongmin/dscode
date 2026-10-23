@@ -80,7 +80,8 @@
   <div class="card">
     <h3>가명화한 의무기록 → 상병 추천</h3>
     <p class="mut" style="margin:0 0 6px">CC, PI, 진찰 소견, 검사 결과, 영상 판독, 추정진단을 붙여넣으세요. <b>이름·등록번호·생년월일·연락처는 빼고</b> 넣습니다. 전송 전에 숫자(6자리 이상)는 자동으로 가립니다.</p>
-    <textarea id="aiNote" style="min-height:170px" placeholder="예)&#10;CC: 우하복부 통증 (onset 1일 전)&#10;PI: 60/F, 어제 저녁부터 복통, 오심, 설사 3회. 발열 없음.&#10;PE: RLQ tenderness(+), rebound(-)&#10;Lab: WBC 12.3, CRP 3.2&#10;Abd CT: 충수 직경 9mm, 주위 지방 침윤&#10;Imp) acute appendicitis"></textarea>
+    <div class="row" style="margin:0 0 6px"><button class="btn sec sm" onclick="insertTemplate()">기본 템플릿 넣기</button><span class="mut">Imp)와 -&gt; 사이에 검사 결과, -&gt; 다음에 최종 코멘트를 평소대로 적으면 됩니다</span></div>
+    <textarea id="aiNote" style="min-height:260px;font-family:Menlo,Consolas,monospace;font-size:13px" placeholder="기본 템플릿 넣기를 누르거나, EMR 기록을 가명화해서 붙여넣으세요"></textarea>
     <label>처방·검사·처치 (선택 — 병원 기준 점검에 사용)</label>
     <input id="aiOrders" placeholder="예: Abd CT, Gaster inj, Macperan, suture 3cm">
     <div class="row">
@@ -239,6 +240,8 @@
       <option value="custom">직접 입력</option>
     </select>
     <input id="setModelCustom" placeholder="모델 ID 직접 입력" style="margin-top:6px;display:none">
+    <label>기록 형식·약어 설명 (AI에게 전달됨 — 본인 기록 습관에 맞게 수정)</label>
+    <textarea id="setLegend" style="min-height:120px;font-size:13px"></textarea>
     <div class="row">
       <button class="btn" onclick="saveSettings()">저장</button>
       <button class="btn sec" onclick="testAPI()">연결 테스트</button>
@@ -282,7 +285,7 @@
   </div>
   <div class="card">
     <h3>탭별 설명</h3>
-    <div class="rule"><b>추천</b> — 가명화한 의무기록(CC, PI, 진찰, 검사, 영상, 추정진단)과 처방·검사를 넣으면 AI가 주진단·부진단·r/o 상병을 이유와 함께 제시합니다. 전송 전 6자리 이상 숫자·전화번호·주민번호는 자동으로 가려지며, 실제 전송 내용을 펼쳐 볼 수 있습니다. 결과는 코드표와 병원 규칙으로 다시 검증됩니다. "전체 복사"로 주)/부)/r/o 형식을 한 번에 복사합니다. <span class="mut">설정 탭에 API 키가 있어야 동작합니다.</span></div>
+    <div class="rule"><b>추천</b> — "기본 템플릿 넣기"로 응급실 기록 템플릿(CC/onset/PMHx/PI/ROS/PEx/Imp/검사결과/-&gt; 최종 코멘트)을 불러와 채우거나, 가명화한 의무기록(CC, PI, 진찰, 검사, 영상, 추정진단)과 처방·검사를 넣으면 AI가 주진단·부진단·r/o 상병을 이유와 함께 제시합니다. 전송 전 6자리 이상 숫자·전화번호·주민번호는 자동으로 가려지며, 실제 전송 내용을 펼쳐 볼 수 있습니다. 결과는 코드표와 병원 규칙으로 다시 검증됩니다. "전체 복사"로 주)/부)/r/o 형식을 한 번에 복사합니다. <span class="mut">설정 탭에 API 키가 있어야 동작합니다.</span></div>
     <div class="rule"><b>검색</b> — 추정진단명, 응급실 약어(AGE, LBP, ICH…), 한글, 영문, 코드 앞자리 어느 것으로든 찾습니다. 코드 클릭 = 복사. 빨간 표시는 사용불가·불완전코드(청구 거절), 노란 표시는 주상병 지양. "메모"로 "심사팀 선호" 같은 병원 고유 정보를 남길 수 있습니다. 검색창이 비어 있으면 최근 복사한 코드가 보입니다.</div>
     <div class="rule"><b>점검</b> — 약·검사·처치와 입력한 상병코드를 적으면 병원 규칙에 비춰 빠진 상병(예: Gaster → K219 없음), 쓰면 안 되는 코드(예: R53), 기록 보완(예: suture 시 cm 기재)을 알려 줍니다. AI 없이 즉시 동작합니다.</div>
     <div class="rule"><b>기준</b> — 의무기록실 안내문 원문. 읽기 전용입니다.</div>
@@ -290,6 +293,16 @@
     <div class="rule"><b>규칙</b> — 점검·추천이 사용하는 병원 규칙 목록. 종류는 세 가지: 처방→필요 상병, 코드→사용불가·교체, 기록 작성 유의사항. 조건은 쉼표로 여러 개(모두 만족), 같은 뜻은 |로 묶습니다(예: gaster|가스터). 여기 넣은 규칙은 AI 추천에도 자동 반영됩니다.</div>
     <div class="rule"><b>분석</b> — 요청기록이 쌓이면 반복 패턴, 자주 나오는 상황, 월별 건수를 보여 줍니다. 두 번 이상 반복됐는데 규칙이 없으면 "규칙화 권장"이 표시됩니다.</div>
     <div class="rule"><b>설정</b> — API 키·모델·연결 테스트, 코드표 상태, 규칙·기록 백업(내보내기/가져오기), 기본 규칙 초기화.</div>
+  </div>
+  <div class="card">
+    <h3>"삭감 안 되는 상병"인지 어떻게 판단하나</h3>
+    <p>삭감 여부를 100% 알려 주는 공식 자료는 없습니다. 이 앱은 세 겹으로 확인하고, 추천 결과의 각 상병 아래에 그 결과를 태그로 보여 줍니다.</p>
+    <ol style="margin:0;padding-left:20px;line-height:1.7">
+      <li><b>코드표</b> — 심평원 상병마스터 속성. 불완전코드(세분류가 있는 상위코드)와 주상병불가 코드는 <u>확실히</u> 거절되므로 여기서 걸러집니다.</li>
+      <li><b>병원규칙</b> — 의무기록실·심사팀이 알려 준 동신병원 기준(R53 불가, Qupron+A099 불가 등). 규칙 탭에서 늘려 갑니다.</li>
+      <li><b>급여기준</b> — 처방·검사별 급여 인정 상병(고시)은 앱에 들어 있지 않아 "미확인"으로 표시됩니다. 심사팀 요청을 요청기록에 적고 규칙으로 바꿀수록 이 빈칸이 채워집니다. 코드에 메모를 달아 두면 메모가 대신 표시됩니다.</li>
+    </ol>
+    <p class="mut">즉, 코드표 ✔ + 병원규칙 ✔이면 "알려진 삭감 사유는 없음"이지 "삭감 안 됨 보장"은 아닙니다.</p>
   </div>
   <div class="card">
     <h3>알아 둘 점</h3>
@@ -321,9 +334,9 @@ const SEED_RULES=[
  {type:'order',title:'CK-MB → Z035 (주진단 불가)',when:['ck-mb|ckmb|ck mb'],add:['Z035:기타 의심되는 심혈관 질환의 관찰'],sev:'bad',note:SRC2+' 2-3. Z035는 주진단 사용 불가 — 부상병으로'},
  {type:'order',title:'HbA1c → R730',when:['a1c|당화혈색소'],add:['R730:이상포도당내성검사'],sev:'bad',note:SRC2+' 2-4. 당뇨병 코드(E10~E14)와 동시 분류 불가'},
  {type:'code',title:'R730 + 당뇨병 코드(E10~E14) 동시 불가',when:['R730','E10*|E11*|E12*|E13*|E14*'],avoid:['R730:이상포도당내성검사'],sev:'bad',note:SRC2+' 2-4. 당뇨 환자는 E코드만, R730은 당뇨 아닌 경우에만'},
- {type:'doc',title:'Abd CT + Chest CT 동시 촬영',when:['abd|복부|abdomen','chest ct|흉부 ct|chest-ct'],sev:'warn',note:SRC2+' 2-5. 경과기록지에 각각 소견 작성, 진단명 각각 부여'},
- {type:'code',title:'Abd CT에 A099만으로는 수가 불인정',when:['abd|복부|abdomen','A099'],avoid:['A099:상세불명 기원의 위장염 및 결장염'],sev:'bad',note:SRC2+' 2-6. 보완상병 입력 (CT 적응증이 되는 의심 상병 추가)'},
- {type:'code',title:'S010 + Brain CT → S0600 같이 입력',when:['S010','brain|두부|head'],add:['S0600:열린 두개내상처가 없는 진탕'],sev:'bad',note:SRC2+' 2-7'},
+ {type:'doc',title:'Abd CT + Chest CT 동시 촬영',when:['abd ct|abd-ct|abdomen ct|abdominal ct|복부 ct|복부ct|apct|a-p ct','chest ct|chest-ct|흉부 ct|흉부ct'],sev:'warn',note:SRC2+' 2-5. 경과기록지에 각각 소견 작성, 진단명 각각 부여'},
+ {type:'code',title:'Abd CT에 A099만으로는 수가 불인정',when:['abd ct|abd-ct|abdomen ct|abdominal ct|복부 ct|복부ct|apct|a-p ct','A099'],avoid:['A099:상세불명 기원의 위장염 및 결장염'],sev:'bad',note:SRC2+' 2-6. 보완상병 입력 (CT 적응증이 되는 의심 상병 추가)'},
+ {type:'code',title:'S010 + Brain CT → S0600 같이 입력',when:['S010','brain ct|brain-ct|두부 ct|head ct|b-ct|bct'],add:['S0600:열린 두개내상처가 없는 진탕'],sev:'bad',note:SRC2+' 2-7'},
  {type:'code',title:'R53(전신쇠약) 사용 불가',when:['R53'],avoid:['R53:전신쇠약'],add:['F480:신경무력증'],sev:'bad',note:SRC1+' 2. 약제 또는 PHx에 맞는 코드로 부여 (예시 F480)'},
  {type:'code',title:'R33(소변정체) → R391',when:['R33'],avoid:['R33:소변정체'],add:['R391:기타 배뇨곤란'],sev:'bad',note:SRC2+' 3-1'},
  {type:'code',title:'J00/J060/J069/J209 → J40',when:['J00|J060|J069|J209'],avoid:['J00:급성 비인두염','J060:급성 후두인두염','J069:상세불명의 급성 상기도감염','J209:상세불명의 급성 기관지염(15세 미만)'],add:['J40:급성인지 만성인지 명시되지 않은 기관지염'],sev:'bad',note:SRC1+' 4'},
@@ -343,7 +356,7 @@ function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2
 function load(){
   try{const s=localStorage.getItem(KEY);if(s){const d=JSON.parse(s);DB={...DB,...d};DB.settings={...{key:'',model:'claude-sonnet-5-5'},...(d.settings||{})};return}}catch(e){}
   try{const old=localStorage.getItem('dscode_v1');if(old){const d=JSON.parse(old);DB.rules=d.rules||[];DB.logs=d.logs||[]}}catch(e){}
-  if(!DB.rules.length)DB.rules=SEED_RULES.map(r=>({...r,id:uid(),src:'seed'}));
+  if(!DB.rules.length||DB.rules.every(r=>r.src==='seed'))DB.rules=SEED_RULES.map(r=>({...r,id:uid(),src:'seed'}));
   save();
 }
 function save(){try{localStorage.setItem(KEY,JSON.stringify(DB))}catch(e){}}
@@ -487,6 +500,10 @@ function buildSystem(){
 7. 세분류(4~5자리)가 있는 상위코드(예: I10, R31, J45)는 '불완전코드'로 청구가 거절되므로 반드시 가장 세분화된 코드까지 씁니다. 외인코드(V,W,X,Y)와 일부 Z코드는 주진단으로 쓸 수 없습니다.
 8. 확신이 낮은 코드는 reason에 그 이유와 대안을 적습니다. 코드가 KCD-8에 실제로 존재하는지 확신이 없으면 "코드 확인 필요"라고 적습니다.
 
+이 응급실의 기록 형식과 약어:
+${DB.settings.legend||LEGEND_DEFAULT}
+비어 있는 항목(예: PI) 뒤에 내용 없음)은 기재되지 않은 것이므로 추정하지 않습니다. ROS/PEx에 (-)로 표시된 소견은 음성입니다.
+
 동신병원 의무기록실·보험심사 규칙:
 ${rulesForPrompt()}
 
@@ -498,26 +515,63 @@ ${rulesForPrompt()}
  "warnings":["삭감 위험이나 규칙 관련 주의"],
  "documentation":["기록 보완 사항"]}`;
 }
+const NOTE_TEMPLATE=`CC)
+onset)
+
+PMHx)
+DM/HTN/DL(-/-/-)
+OP(-)
+Allergy(-)
+
+PI)
+
+ROS)
+fever- chilling sense-
+C/S/R(-/-/-)
+A/N/V/D/C(-/-/-/-/-)
+
+PEx)
+PI- s exudate
+RHB s murmur
+CBS s rale, wheezing, crackle
+soft and flat abdomen
+normoactive bowel sound
+abd T/RT(-/-)
+CVAT(-/-)
+
+Imp)
+
+->
+`;
+const LEGEND_DEFAULT=`기록 형식: CC) 주호소, onset) 발병시각, PMHx) 과거력, DM/HTN/DL 당뇨/고혈압/이상지질혈증, OP 수술력, PI) 현병력, ROS) 계통문진, PEx) 신체진찰, Imp) 추정진단. Imp)와 "->" 사이에는 검사 결과(lab, ECG, X-ray, CT 등)를 적고, "->" 다음은 최종 코멘트(결과 설명, 투약, 퇴실·외래·입원 계획)
+약어: C/S/R = cough/sputum/rhinorrhea, A/N/V/D/C = anorexia/nausea/vomiting/diarrhea/constipation, PI- s exudate = pharyngeal injection 없음·삼출물 없음, RHB s murmur = regular heart beat without murmur, CBS = clear breath sound, abd T/RT = abdominal tenderness/rebound tenderness, CVAT = costovertebral angle tenderness, s = without, c = with, (-) 음성, (+) 양성`;
+function insertTemplate(){const ta=document.getElementById('aiNote');if(ta.value.trim()&&!confirm('현재 내용을 지우고 템플릿을 넣을까요?'))return;ta.value=NOTE_TEMPLATE;ta.focus();ta.setSelectionRange(3,3)}
 function clearAI(){document.getElementById('aiNote').value='';document.getElementById('aiOrders').value='';document.getElementById('aiOut').innerHTML=''}
 async function runAI(){
   const note=document.getElementById('aiNote').value.trim();const orders=document.getElementById('aiOrders').value.trim();const out=document.getElementById('aiOut');
   if(!note){toast('의무기록을 입력하세요');return}
   if(!DB.settings.key){out.innerHTML='<div class="alert warn"><div class="t">API 키가 없습니다</div>설정 탭에서 Claude API 키를 저장하세요.</div>';return}
+  const ordersAll=orders;
   const masked=maskPHI(note);
   const btn=document.getElementById('aiBtn');btn.disabled=true;btn.innerHTML='<span class="spin"></span>추천 중…';
-  out.innerHTML=`<div class="card"><details><summary>전송한 내용 (개인정보 자동 가림 적용)</summary><pre class="ref" style="margin-top:8px">${esc(masked)}${orders?'\n\n[처방·검사·처치] '+esc(orders):''}</pre></details></div>`;
+  out.innerHTML=`<div class="card"><details><summary>전송한 내용 (개인정보 자동 가림 적용)</summary><pre class="ref" style="margin-top:8px">${esc(masked)}${ordersAll?'\n\n[처방·검사·처치] '+esc(ordersAll):''}</pre></details></div>`;
   try{
-    const user=`[의무기록]\n${masked}\n\n[처방·검사·처치]\n${orders||'(기재 없음)'}`;
+    const user=`[의무기록]\n${masked}\n\n[처방·검사·처치]\n${ordersAll||'(기재 없음)'}`;
     const txt=await callClaude(buildSystem(),user,2500);
     const j=parseJSON(txt);
     if(!j||!j.main){out.innerHTML+=`<div class="alert warn"><div class="t">응답을 해석하지 못했습니다</div><pre class="ref">${esc(txt)}</pre></div>`;return}
-    renderAI(j,orders);
+    renderAI(j,ordersAll+'\n'+masked);
   }catch(e){out.innerHTML+=`<div class="alert bad"><div class="t">호출 실패</div>${esc(e.message||e)}<div class="mut">병원 네트워크에서 api.anthropic.com 접속이 막혀 있거나 키가 잘못되었을 수 있습니다. 설정 탭의 연결 테스트로 확인하세요.</div></div>`}
   finally{btn.disabled=false;btn.textContent='상병 추천'}
 }
 function parseJSON(t){try{return JSON.parse(t)}catch(e){}const m=t.match(/\{[\s\S]*\}/);if(m){try{return JSON.parse(m[0])}catch(e){}}return null}
 function dxCard(label,d){if(!d||!d.code)return '';const code=norm(d.code);const inTable=!!KMAP[code];const off=kname(code);
-  return `<div class="dx"><div class="hd"><span class="tag">${label}</span>${codeChip({code,name:off||d.name||''})}${!inTable?`<span class="tag warn" title="코드표에서 찾지 못함">코드 확인</span>`:''}${label==='주진단'&&kflags(code).includes('P')?'<span class="tag bad">주상병 불가 — 다른 주진단 필요</span>':''}${flagTags(code).replace(/<span class="tag warn"[^>]*>주상병불가<\/span>/,'')}${off&&d.name&&off!==d.name?`<span class="mut">(모델 표기: ${esc(d.name)})</span>`:''}</div><div class="why">${esc(d.reason||'')}</div></div>`}
+  return `<div class="dx"><div class="hd"><span class="tag">${label}</span>${codeChip({code,name:off||d.name||''})}${!inTable?`<span class="tag warn" title="코드표에서 찾지 못함">코드 확인</span>`:''}${label==='주진단'&&kflags(code).includes('P')?'<span class="tag bad">주상병 불가 — 다른 주진단 필요</span>':''}${flagTags(code).replace(/<span class="tag warn"[^>]*>주상병불가<\/span>/,'')}${off&&d.name&&off!==d.name?`<span class="mut">(모델 표기: ${esc(d.name)})</span>`:''}</div><div class="why">${esc(d.reason||'')}</div><div style="margin-top:4px">${denialTags(code,label)}</div></div>`}
+function denialTags(code,label){const f=kflags(code);const inT=!!KMAP[code];
+  const t1=!inT?'<span class="tag warn">코드표: 없음</span>':f.includes('I')?'<span class="tag bad">코드표: 불완전코드(청구불가)</span>':(label==='주진단'&&f.includes('P'))?'<span class="tag bad">코드표: 주상병불가</span>':'<span class="tag" style="background:#e8f6ee;color:var(--ok)">코드표 ✔</span>';
+  const st=codeStatus(code);const t2=(st&&st.sev==='bad')?`<span class="tag bad">병원규칙: ${esc(st.title)}</span>`:(st&&st.sev==='warn')?`<span class="tag warn">병원규칙: ${esc(st.title)}</span>`:'<span class="tag" style="background:#e8f6ee;color:var(--ok)">병원규칙 ✔</span>';
+  const note=DB.codeNotes[code];const t3=note?`<span class="tag" title="코드 메모">메모: ${esc(note)}</span>`:'<span class="tag" title="처방별 급여기준(고시)은 앱에 없음 — 심사팀 요청이 쌓이면 규칙으로 추가">급여기준: 미확인</span>';
+  return t1+t2+t3}
 function renderAI(j,orders){
   const out=document.getElementById('aiOut');
   const all=[j.main,...(j.sub||[]),...(j.ro||[])].filter(x=>x&&x.code).map(x=>norm(x.code));
@@ -544,10 +598,10 @@ async function callClaude(system,user,maxTokens){
 }
 
 /* ---------- 설정 ---------- */
-function loadSettingsUI(){const s=DB.settings;document.getElementById('setKey').value=s.key||'';const sel=document.getElementById('setModel');const std=[...sel.options].map(o=>o.value);
+function loadSettingsUI(){const s=DB.settings;document.getElementById('setKey').value=s.key||'';document.getElementById('setLegend').value=s.legend||LEGEND_DEFAULT;const sel=document.getElementById('setModel');const std=[...sel.options].map(o=>o.value);
   if(std.includes(s.model)){sel.value=s.model}else{sel.value='custom';document.getElementById('setModelCustom').value=s.model||'';document.getElementById('setModelCustom').style.display='block'}}
 document.getElementById('setModel').onchange=e=>{document.getElementById('setModelCustom').style.display=e.target.value==='custom'?'block':'none'};
-function saveSettings(){const sel=document.getElementById('setModel').value;DB.settings.key=document.getElementById('setKey').value.trim();DB.settings.model=sel==='custom'?document.getElementById('setModelCustom').value.trim():sel;save();toast('저장됨');updAiHint()}
+function saveSettings(){const sel=document.getElementById('setModel').value;DB.settings.key=document.getElementById('setKey').value.trim();DB.settings.model=sel==='custom'?document.getElementById('setModelCustom').value.trim():sel;DB.settings.legend=document.getElementById('setLegend').value.trim();save();toast('저장됨');updAiHint()}
 async function testAPI(){saveSettings();const st=document.getElementById('setStat');st.textContent='테스트 중…';try{const t=await callClaude('한 단어로만 답하세요.','연결 확인. "OK"라고만 답하세요.',10);st.textContent='연결 성공: '+t.trim().slice(0,20)}catch(e){st.textContent='실패: '+(e.message||e)}}
 function updAiHint(){document.getElementById('aiHint').textContent=DB.settings.key?('모델: '+DB.settings.model):'설정 탭에서 API 키를 먼저 저장하세요 (도움말 참고)'}
 
