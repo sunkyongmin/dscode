@@ -13,12 +13,13 @@
   nav{display:flex;background:#fff;border-bottom:1px solid var(--line);overflow-x:auto}
   nav button{flex:1;min-width:58px;border:0;background:none;padding:11px 4px;font-size:14px;color:var(--mut);border-bottom:3px solid transparent;cursor:pointer;white-space:nowrap}
   nav button.on{color:var(--pri);border-color:var(--pri);font-weight:700}
-  #navTop{background:var(--pri);border-bottom:0}
-  #navTop button{color:rgba(255,255,255,.7);font-size:15px;padding:10px 4px;border-bottom-width:3px}
-  #navTop button.on{color:#fff;border-color:#fff}
-  #navSub{background:#fff}
-  #navSub button{flex:0 0 auto;min-width:0;padding:10px 18px}
-  @media (max-width:600px){#navSub button{flex:1;padding:10px 6px}}
+  #navTop{background:#fff;border-bottom:0;justify-content:center;padding:12px 16px 4px;overflow:visible}
+  #navTop .seg{display:inline-flex;background:#e9edf3;border-radius:10px;padding:4px;gap:2px}
+  #navTop button{flex:0 0 auto;min-width:110px;padding:8px 22px;border-radius:8px;border-bottom:0;font-size:15px;color:var(--mut)}
+  #navTop button.on{background:var(--pri);color:#fff;font-weight:700}
+  #navSub{background:#fff;justify-content:center;border-bottom:1px solid var(--line)}
+  #navSub button{flex:0 0 auto;min-width:0;padding:10px 22px;font-size:15px}
+  @media (max-width:600px){#navTop button{min-width:0;padding:8px 12px;font-size:14px}#navSub button{flex:1;padding:10px 6px}}
   main{padding:14px;max-width:900px;margin:0 auto}
   .tab{display:none}.tab.on{display:block}
   .card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:12px}
@@ -54,6 +55,9 @@
   .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#222;color:#fff;padding:9px 16px;border-radius:20px;font-size:13px;opacity:0;transition:.25s;pointer-events:none;z-index:9}
   .toast.show{opacity:1}
   details summary{cursor:pointer;color:var(--pri);font-size:14px}
+  .clearwrap{position:relative}.clearwrap input{padding-right:40px}
+  .clearbtn{position:absolute;right:6px;top:50%;transform:translateY(-50%);width:28px;height:28px;border:0;border-radius:50%;background:#e6ebf2;color:var(--mut);font-size:18px;line-height:1;cursor:pointer;display:none}
+  .clearbtn:hover{background:#d5dce6}
   .res{border-bottom:1px solid var(--line);padding:8px 2px;display:flex;gap:10px;align-items:flex-start}
   .res .c{font-family:Menlo,Consolas,monospace;font-weight:700;color:var(--pri);min-width:62px;cursor:pointer}
   .res .n{flex:1}.res .n .en{color:var(--mut);font-size:12px}
@@ -68,11 +72,11 @@
 </head>
 <body>
 <header><span>동신병원 응급실 상병 선정</span><small id="hdStat"></small></header>
-<nav id="navTop">
+<nav id="navTop"><div class="seg">
   <button data-g="care">진료</button>
   <button data-g="review">심사 관리</button>
   <button data-g="info">참고·설정</button>
-</nav>
+</div></nav>
 <nav id="navSub"></nav>
 <main>
 
@@ -98,7 +102,7 @@
 <section class="tab on" id="tab-search">
   <div class="card">
     <h3>상병코드 검색</h3>
-    <input id="srchIn" placeholder="추정진단명·약어·한글·코드 (예: AGE, 발목 염좌, K29, cellulitis)" oninput="runSearch()" autocomplete="off">
+    <div class="clearwrap"><input id="srchIn" placeholder="추정진단명·약어·한글·코드 (예: AGE, 발목 염좌, K29, cellulitis)" oninput="runSearch()" autocomplete="off"><button class="clearbtn" id="srchClr" title="지우기" onclick="clearSearch()">×</button></div>
     <div class="mut" style="margin-top:6px" id="srchStat"></div>
   </div>
   <div id="srchOut"></div>
@@ -471,8 +475,9 @@ function searchCodes(q,limit){
 function resRow(x){const r=x.row||[x.code,'',''];const st=codeStatus(x.code);const note=DB.codeNotes[x.code];
   return `<div class="res"><span class="c" onclick="copyText('${x.code}')">${x.code}</span><div class="n"><div>${esc(r[1]||'(코드표에 없음)')} ${st?`<span class="tag ${st.sev}" title="${esc(st.title)}">${st.sev==='bad'?'사용불가':'지양'}</span>`:''}${flagTags(x.code)}${DB.recent.includes(x.code)?'<span class="tag">최근</span>':''}</div><div class="en">${esc(r[2]||'')}${r[4]?' · '+esc(r[4]):''}</div>${x.why&&x.why.length?`<div class="mut">${esc(x.why[0])}</div>`:''}${note?`<div class="note">메모: ${esc(note)}</div>`:''}</div><button class="btn sec sm" onclick="noteCode('${x.code}')">메모</button></div>`}
 function noteCode(code){const v=prompt(code+' 메모 (예: 심사팀 선호, 삭감됨)',DB.codeNotes[code]||'');if(v===null)return;if(v.trim())DB.codeNotes[code]=v.trim();else delete DB.codeNotes[code];save();runSearch()}
+function clearSearch(){const i=document.getElementById('srchIn');i.value='';runSearch();i.focus()}
 function runSearch(){
-  const q=document.getElementById('srchIn').value.trim();const out=document.getElementById('srchOut');const st=document.getElementById('srchStat');
+  const q=document.getElementById('srchIn').value.trim();document.getElementById('srchClr').style.display=q?'block':'none';const out=document.getElementById('srchOut');const st=document.getElementById('srchStat');
   if(!q){out.innerHTML=DB.recent.length?`<div class="card"><h3>최근 사용</h3>${DB.recent.map(c=>codeChip(c)).join('')}</div>`:'';st.textContent='';return}
   const hits=searchCodes(q);
   const toks=q.toLowerCase().split(/\s+/);
@@ -684,7 +689,7 @@ function renderAll(){renderRules();renderLogs();renderStats();updAiHint()}
 load();setKcd(KCD_BUILTIN,'내장 임시 코드표');loadKcdJson();renderAll();loadSettingsUI();
 document.getElementById('lgDate').value=new Date().toISOString().slice(0,10);
 showTab('search');try{if(!localStorage.getItem('dscode_seen')){localStorage.setItem('dscode_seen','1');showTab('help')}}catch(e){}
-document.getElementById('srchIn').addEventListener('keydown',e=>{if(e.key==='Enter')runSearch()});
+document.getElementById('srchIn').addEventListener('keydown',e=>{if(e.key==='Enter')runSearch();if(e.key==='Escape')clearSearch()});
 </script>
 </body>
 </html>
