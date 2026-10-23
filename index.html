@@ -13,6 +13,12 @@
   nav{display:flex;background:#fff;border-bottom:1px solid var(--line);overflow-x:auto}
   nav button{flex:1;min-width:58px;border:0;background:none;padding:11px 4px;font-size:14px;color:var(--mut);border-bottom:3px solid transparent;cursor:pointer;white-space:nowrap}
   nav button.on{color:var(--pri);border-color:var(--pri);font-weight:700}
+  #navTop{background:var(--pri);border-bottom:0}
+  #navTop button{color:rgba(255,255,255,.7);font-size:15px;padding:10px 4px;border-bottom-width:3px}
+  #navTop button.on{color:#fff;border-color:#fff}
+  #navSub{background:#fff}
+  #navSub button{flex:0 0 auto;min-width:0;padding:10px 18px}
+  @media (max-width:600px){#navSub button{flex:1;padding:10px 6px}}
   main{padding:14px;max-width:900px;margin:0 auto}
   .tab{display:none}.tab.on{display:block}
   .card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:12px}
@@ -62,17 +68,12 @@
 </head>
 <body>
 <header><span>동신병원 응급실 상병 선정</span><small id="hdStat"></small></header>
-<nav>
-  <button data-t="search">검색</button>
-  <button data-t="ai">추천</button>
-  <button data-t="check">점검</button>
-  <button data-t="log">요청기록</button>
-  <button data-t="rules">규칙</button>
-  <button data-t="stats">분석</button>
-  <button data-t="ref">기준</button>
-  <button data-t="set">설정</button>
-  <button data-t="help">도움말</button>
+<nav id="navTop">
+  <button data-g="care">진료</button>
+  <button data-g="review">심사 관리</button>
+  <button data-g="info">참고·설정</button>
 </nav>
+<nav id="navSub"></nav>
 <main>
 
 <!-- 추천 (AI) -->
@@ -672,9 +673,13 @@ function importData(){try{const d=JSON.parse(document.getElementById('dataBox').
 function resetSeed(){if(!confirm('규칙을 기본 규칙으로 되돌립니다. 직접 만든 규칙은 지워지고 요청기록은 유지됩니다. 계속할까요?'))return;DB.rules=SEED_RULES.map(r=>({...r,id:uid(),src:'seed'}));save();renderAll();toast('초기화 완료')}
 
 /* ---------- 탭 ---------- */
-function showTab(t){document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.t===t));document.querySelectorAll('.tab').forEach(s=>s.classList.toggle('on',s.id==='tab-'+t));
+function showTab(t){renderNav(t);document.querySelectorAll('.tab').forEach(s=>s.classList.toggle('on',s.id==='tab-'+t));
   if(t==='stats')renderStats();if(t==='rules')renderRules();if(t==='log')renderLogs();if(t==='search')runSearch();if(t==='set')loadSettingsUI()}
-document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>showTab(b.dataset.t));
+const GROUPS={care:[['search','검색'],['ai','추천'],['check','점검']],review:[['log','요청기록'],['rules','규칙'],['stats','분석']],info:[['ref','기준'],['set','설정'],['help','도움말']]};
+function groupOf(t){for(const g in GROUPS)if(GROUPS[g].some(x=>x[0]===t))return g;return 'care'}
+function renderNav(t){const g=groupOf(t);document.querySelectorAll('#navTop button').forEach(b=>b.classList.toggle('on',b.dataset.g===g));
+  document.getElementById('navSub').innerHTML=GROUPS[g].map(([id,nm])=>`<button data-t="${id}" class="${id===t?'on':''}" onclick="showTab('${id}')">${nm}</button>`).join('')}
+document.querySelectorAll('#navTop button').forEach(b=>b.onclick=()=>showTab(GROUPS[b.dataset.g][0][0]));
 function renderAll(){renderRules();renderLogs();renderStats();updAiHint()}
 load();setKcd(KCD_BUILTIN,'내장 임시 코드표');loadKcdJson();renderAll();loadSettingsUI();
 document.getElementById('lgDate').value=new Date().toISOString().slice(0,10);
