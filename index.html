@@ -521,7 +521,13 @@ ${DB.settings.legend||LEGEND_DEFAULT}
 동신병원 의무기록실·보험심사 규칙:
 ${rulesForPrompt()}
 
-출력은 아래 JSON만 (설명문 없이):
+출력 규칙:
+- 코드블록(\`\`\`)이나 설명문 없이 JSON 객체 하나만 출력합니다.
+- reason은 한 문장, 60자 이내로 씁니다.
+- sub는 최대 4개, ro는 최대 3개, alternatives는 최대 2개, warnings·documentation은 각 최대 3개.
+- 불완전코드(세분류가 있는 3자리 코드 등)는 절대 쓰지 말고 반드시 세분류 코드로 씁니다(예: I10 대신 I109).
+- 기록에 처방·검사가 있어도 진단이 불확실하면, 사용불가 코드 대신 검사 적응증이 되는 의심 상병을 r/o로 넣습니다.
+JSON 형식:
 {"main":{"code":"","name":"","reason":""},
  "sub":[{"code":"","name":"","reason":""}],
  "ro":[{"code":"","name":"","reason":"어떤 검사 때문인지"}],
@@ -571,27 +577,69 @@ async function runAI(){
   out.innerHTML=`<div class="card"><details><summary>전송한 내용 (개인정보 자동 가림 적용)</summary><pre class="ref" style="margin-top:8px">${esc(masked)}${ordersAll?'\n\n[처방·검사·처치] '+esc(ordersAll):''}</pre></details></div>`;
   try{
     const user=`[의무기록]\n${masked}\n\n[처방·검사·처치]\n${ordersAll||'(기재 없음)'}`;
-    const txt=await callClaude(buildSystem(),user,2500);
-    const j=parseJSON(txt);
-    if(!j||!j.main){out.innerHTML+=`<div class="alert warn"><div class="t">응답을 해석하지 못했습니다</div><pre class="ref">${esc(txt)}</pre></div>`;return}
-    renderAI(j,ordersAll+'\n'+masked);
+    const sys=buildSystem();
+    let txt=await callClaude(sys,user,4000);
+    let j=parseJSON(txt);
+    if(!j||!j.main){out.innerHTML+=`<div class="alert warn"><div class="t">응답을 해석하지 못했습니다</div><div class="mut">다시 눌러 보세요. 반복되면 이 화면을 캡처해 알려 주세요.</div><details><summary>원문 보기</summary><pre class="ref">${esc(txt)}</pre></details></div>`;return}
+    const issues=validateAI(j,ordersAll+'\n'+masked);let fixed=false;
+    if(issues.length){
+      btn.innerHTML='<span class="spin"></span>코드 보정 중…';
+      const fb=`앞의 추천에 다음 문제가 있습니다. 문제를 고친 JSON 전체를 같은 형식으로 다시 출력하세요.\n- `+issues.join('\n- ');
+      try{const t2=await callClaude(sys,user+'\n\n[이전 추천]\n'+JSON.stringify(j)+'\n\n[보정 요청]\n'+fb,4000);const j2=parseJSON(t2);if(j2&&j2.main){j=j2;fixed=issues}}catch(e){}
+    }
+    renderAI(j,ordersAll+'\n'+masked,fixed);
   }catch(e){out.innerHTML+=`<div class="alert bad"><div class="t">호출 실패</div>${esc(e.message||e)}<div class="mut">병원 네트워크에서 api.anthropic.com 접속이 막혀 있거나 키가 잘못되었을 수 있습니다. 설정 탭의 연결 테스트로 확인하세요.</div></div>`}
   finally{btn.disabled=false;btn.textContent='상병 추천'}
 }
-function parseJSON(t){try{return JSON.parse(t)}catch(e){}const m=t.match(/\{[\s\S]*\}/);if(m){try{return JSON.parse(m[0])}catch(e){}}return null}
+function parseJSON(t){
+  t=String(t||'').replace(/```(?:json)?/gi,'').trim();
+  try{return JSON.parse(t)}catch(e){}
+  const i=t.indexOf('{');if(i<0)return null;t=t.slice(i);
+  const m=t.match(/\{[\s\S]*\}/);if(m){try{return JSON.parse(m[0])}catch(e){}}
+  return repairJSON(t);
+}
+function repairJSON(t){ // 잘린 JSON을 마지막 완결된 항목까지 살려서 닫기
+  let st=[],inS=false,esc2=false,lastOk=-1,lastStack=null;
+  for(let i=0;i<t.length;i++){const c=t[i];
+    if(inS){if(esc2)esc2=false;else if(c==='\\')esc2=true;else if(c==='"')inS=false;continue}
+    if(c==='"'){inS=true;continue}
+    if(c==='{'||c==='['){st.push(c==='{'?'}':']')}
+    else if(c==='}'||c===']'){st.pop();lastOk=i;lastStack=st.slice()}
+    else if(c===','){lastOk=i-1;lastStack=st.slice()}
+  }
+  if(lastOk<0)return null;
+  const body=t.slice(0,lastOk+1).replace(/,\s*$/,'');
+  try{return JSON.parse(body+lastStack.reverse().join(''))}catch(e){return null}
+}
+function childCodes(code){code=norm(code);return KCD.filter(r=>r[0]!==code&&r[0].startsWith(code)).slice(0,8)}
+function validateAI(j,ctx){const iss=[];
+  const each=(arr,label)=>(arr||[]).forEach(d=>{if(!d||!d.code)return;const c=norm(d.code);const f=kflags(c);
+    if(!KMAP[c])iss.push(`${c}는 심평원 상병마스터에 없는 코드입니다. 실제 존재하는 코드로 바꾸세요.`);
+    else if(f.includes('I')){const ch=childCodes(c).map(r=>r[0]+' '+r[1]).join(', ');iss.push(`${c}는 불완전코드(청구 불가)입니다. 세분류 중에서 고르세요: ${ch}`)}
+    if(label==='주진단'&&f.includes('P'))iss.push(`${c}는 주상병으로 쓸 수 없습니다. 다른 주진단을 고르세요.`);
+    const st=codeStatus(c);if(st&&st.sev==='bad'&&!f.includes('I'))iss.push(`${c}: 병원 규칙 위반 — ${st.title}`);
+  });
+  each([j.main],'주진단');each(j.sub,'부진단');each(j.ro,'r/o');
+  const codes=[j.main,...(j.sub||[]),...(j.ro||[])].filter(x=>x&&x.code).map(x=>norm(x.code));
+  const inp=analyze((ctx||'')+'\n'+codes.join(', '));
+  for(const r of DB.rules){if(!ruleHits(r,inp))continue;const ev=evalRule(r,inp);
+    if(r.type==='code'&&r.sev==='bad'&&ev.present.length&&(r.when||[]).length>1)iss.push(`병원 규칙 위반 — ${r.title}. ${r.note||''}`);
+    if(r.type==='order'&&!ev.satisfied)iss.push(`처방·검사에 필요한 상병 누락 — ${r.title}: ${ev.addList.map(a=>a.code).join('/')} 중 하나 추가`);}
+  return [...new Set(iss)]}
 function dxCard(label,d){if(!d||!d.code)return '';const code=norm(d.code);const inTable=!!KMAP[code];const off=kname(code);
-  return `<div class="dx"><div class="hd"><span class="tag">${label}</span>${codeChip({code,name:off||d.name||''})}${!inTable?`<span class="tag warn" title="코드표에서 찾지 못함">코드 확인</span>`:''}${label==='주진단'&&kflags(code).includes('P')?'<span class="tag bad">주상병 불가 — 다른 주진단 필요</span>':''}${flagTags(code).replace(/<span class="tag warn"[^>]*>주상병불가<\/span>/,'')}${off&&d.name&&off!==d.name?`<span class="mut">(모델 표기: ${esc(d.name)})</span>`:''}</div><div class="why">${esc(d.reason||'')}</div><div style="margin-top:4px">${denialTags(code,label)}</div></div>`}
+  return `<div class="dx"><div class="hd"><span class="tag">${label}</span>${codeChip({code,name:off||d.name||''})}${!inTable?`<span class="tag warn" title="코드표에서 찾지 못함">코드 확인</span>`:''}${label==='주진단'&&kflags(code).includes('P')?'<span class="tag bad">주상병 불가 — 다른 주진단 필요</span>':''}${flagTags(code).replace(/<span class="tag warn"[^>]*>주상병불가<\/span>/,'')}${off&&d.name&&off!==d.name?`<span class="mut">(모델 표기: ${esc(d.name)})</span>`:''}</div><div class="why">${esc(d.reason||'')}</div><div style="margin-top:4px">${denialTags(code,label)}</div>${kflags(code).includes('I')?`<div class="mut" style="margin-top:4px">세분류 선택: ${childCodes(code).map(r=>codeChip(r[0])).join('')}</div>`:''}</div>`}
 function denialTags(code,label){const f=kflags(code);const inT=!!KMAP[code];
   const t1=!inT?'<span class="tag warn">코드표: 없음</span>':f.includes('I')?'<span class="tag bad">코드표: 불완전코드(청구불가)</span>':(label==='주진단'&&f.includes('P'))?'<span class="tag bad">코드표: 주상병불가</span>':'<span class="tag" style="background:#e8f6ee;color:var(--ok)">코드표 ✔</span>';
   const st=codeStatus(code);const t2=(st&&st.sev==='bad')?`<span class="tag bad">병원규칙: ${esc(st.title)}</span>`:(st&&st.sev==='warn')?`<span class="tag warn">병원규칙: ${esc(st.title)}</span>`:'<span class="tag" style="background:#e8f6ee;color:var(--ok)">병원규칙 ✔</span>';
   const note=DB.codeNotes[code];const t3=note?`<span class="tag" title="코드 메모">메모: ${esc(note)}</span>`:'<span class="tag" title="처방별 급여기준(고시)은 앱에 없음 — 심사팀 요청이 쌓이면 규칙으로 추가">급여기준: 미확인</span>';
   return t1+t2+t3}
-function renderAI(j,orders){
+function renderAI(j,orders,fixed){
   const out=document.getElementById('aiOut');
   const all=[j.main,...(j.sub||[]),...(j.ro||[])].filter(x=>x&&x.code).map(x=>norm(x.code));
   const chk=checkHtml([orders,...all].join(', '));
   const summary=['주) '+norm(j.main.code)+' '+(kname(j.main.code)||j.main.name||''),...(j.sub||[]).map(s=>'부) '+norm(s.code)+' '+(kname(s.code)||s.name||'')),...(j.ro||[]).map(s=>'r/o '+norm(s.code)+' '+(kname(s.code)||s.name||''))].join('\n');
-  let h=`<div class="card"><div class="row" style="margin:0 0 8px"><h3 style="margin:0;flex:1">추천 상병</h3><button class="btn sec sm" onclick="copyText(${JSON.stringify(summary).replace(/"/g,'&quot;')})">전체 복사</button></div>`;
+  let h=fixed&&fixed.length?`<div class="alert info"><div class="t">첫 추천을 자동 보정했습니다</div><ul style="margin:4px 0 0 18px;padding:0">${fixed.map(x=>'<li>'+esc(x.split(':')[0].slice(0,80))+'</li>').join('')}</ul></div>`:'';
+  h+=`<div class="card"><div class="row" style="margin:0 0 8px"><h3 style="margin:0;flex:1">추천 상병</h3><button class="btn sec sm" onclick="copyText(${JSON.stringify(summary).replace(/"/g,'&quot;')})">전체 복사</button></div>`;
   h+=dxCard('주진단',j.main);
   (j.sub||[]).forEach(s=>h+=dxCard('부진단',s));
   (j.ro||[]).forEach(s=>h+=dxCard('r/o',s));
@@ -608,7 +656,7 @@ async function callClaude(system,user,maxTokens){
   const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'content-type':'application/json','x-api-key':DB.settings.key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
     body:JSON.stringify({model,max_tokens:maxTokens||1000,system,messages:[{role:'user',content:user}]})});
   if(!r.ok){let m='HTTP '+r.status;try{const e=await r.json();m+=' '+(e.error&&e.error.message||'')}catch(x){}throw new Error(m)}
-  const d=await r.json();return (d.content||[]).filter(c=>c.type==='text').map(c=>c.text).join('');
+  const d=await r.json();const t=(d.content||[]).filter(c=>c.type==='text').map(c=>c.text).join('');callClaude.last=d.stop_reason;return t;
 }
 
 /* ---------- 설정 ---------- */
