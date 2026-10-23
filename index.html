@@ -63,25 +63,25 @@
 <body>
 <header><span>동신병원 응급실 상병 선정</span><small id="hdStat"></small></header>
 <nav>
-  <button class="on" data-t="ai">추천</button>
   <button data-t="search">검색</button>
+  <button data-t="ai">추천</button>
   <button data-t="check">점검</button>
-  <button data-t="ref">기준</button>
   <button data-t="log">요청기록</button>
   <button data-t="rules">규칙</button>
   <button data-t="stats">분석</button>
+  <button data-t="ref">기준</button>
   <button data-t="set">설정</button>
   <button data-t="help">도움말</button>
 </nav>
 <main>
 
 <!-- 추천 (AI) -->
-<section class="tab on" id="tab-ai">
+<section class="tab" id="tab-ai">
   <div class="card">
     <h3>가명화한 의무기록 → 상병 추천</h3>
     <p class="mut" style="margin:0 0 6px">CC, PI, 진찰 소견, 검사 결과, 영상 판독, 추정진단을 붙여넣으세요. <b>이름·등록번호·생년월일·연락처는 빼고</b> 넣습니다. 전송 전에 숫자(6자리 이상)는 자동으로 가립니다.</p>
     <div class="row" style="margin:0 0 6px"><button class="btn sec sm" onclick="insertTemplate()">기본 템플릿 넣기</button><span class="mut">Imp)와 -&gt; 사이에 검사 결과, -&gt; 다음에 최종 코멘트를 평소대로 적으면 됩니다</span></div>
-    <textarea id="aiNote" style="min-height:260px;font-family:Menlo,Consolas,monospace;font-size:13px" placeholder="기본 템플릿 넣기를 누르거나, EMR 기록을 가명화해서 붙여넣으세요"></textarea>
+    <textarea id="aiNote" style="min-height:260px;font-size:14px;line-height:1.5" placeholder="기본 템플릿 넣기를 누르거나, EMR 기록을 가명화해서 붙여넣으세요"></textarea>
     <label>처방·검사·처치 (선택 — 병원 기준 점검에 사용)</label>
     <input id="aiOrders" placeholder="예: Abd CT, Gaster inj, Macperan, suture 3cm">
     <div class="row">
@@ -94,7 +94,7 @@
 </section>
 
 <!-- 검색 -->
-<section class="tab" id="tab-search">
+<section class="tab on" id="tab-search">
   <div class="card">
     <h3>상병코드 검색</h3>
     <input id="srchIn" placeholder="추정진단명·약어·한글·코드 (예: AGE, 발목 염좌, K29, cellulitis)" oninput="runSearch()" autocomplete="off">
@@ -678,7 +678,7 @@ document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>showTab(b.datas
 function renderAll(){renderRules();renderLogs();renderStats();updAiHint()}
 load();setKcd(KCD_BUILTIN,'내장 임시 코드표');loadKcdJson();renderAll();loadSettingsUI();
 document.getElementById('lgDate').value=new Date().toISOString().slice(0,10);
-try{if(!localStorage.getItem('dscode_seen')){localStorage.setItem('dscode_seen','1');showTab('help')}}catch(e){}
+showTab('search');try{if(!localStorage.getItem('dscode_seen')){localStorage.setItem('dscode_seen','1');showTab('help')}}catch(e){}
 document.getElementById('srchIn').addEventListener('keydown',e=>{if(e.key==='Enter')runSearch()});
 </script>
 </body>
