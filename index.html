@@ -208,6 +208,19 @@
     <div class="row"><button class="btn" onclick="addLog()">기록</button></div>
   </div>
   <div id="logList"></div>
+  <div class="card" id="gapCard">
+    <h3>기준-임상 괴리 사례</h3>
+    <p class="mut" style="margin:0">임상적으로 필요하다고 판단했지만 급여기준·심사기준 때문에 처방·검사·상병을 바꾸거나, 생략하거나, 비급여로 돌린 경우를 적습니다. 연구 자료로 쓰이므로 환자 식별정보는 적지 마세요.</p>
+    <label>날짜</label><input type="date" id="gpDate">
+    <label>상황 (주호소·추정진단·처방)</label><input id="gpCtx" placeholder="예: 성인 급성 위장염, 구토 지속">
+    <label>임상적으로 필요했던 것</label><input id="gpNeed" placeholder="예: ondansetron IV">
+    <label>관련 기준</label><select id="gpRule"></select>
+    <label>실제 조치</label>
+    <select id="gpAct"><option>비급여(전액 본인부담)로 처리</option><option>다른 처방·검사로 변경</option><option>처방·검사 생략</option><option>상병을 바꿔 청구</option><option>그대로 청구(삭감 감수)</option><option>기타</option></select>
+    <label>메모 (임상적 근거, 환자 영향 등)</label><input id="gpMemo" placeholder="예: metoclopramide로 변경, 구토 조절 늦어 체류시간 증가">
+    <div class="row"><button class="btn" onclick="addGap()">사례 기록</button></div>
+  </div>
+  <div id="gapList"></div>
 </section>
 
 <!-- 규칙 -->
@@ -244,6 +257,29 @@
 
 <!-- 분석 -->
 <section class="tab" id="tab-stats"><div id="statsOut"></div></section>
+
+<!-- 연구 -->
+<section class="tab" id="tab-res">
+  <div class="card">
+    <h3>연구용 사용 기록</h3>
+    <p class="mut" style="margin:0 0 6px">켜 두면 상병 추천을 할 때마다 <b>추천 상병, 코드 문제·자동 보정 여부, 병원 규칙 경고</b>를, "기록 전체 복사"를 누를 때 <b>최종 Imp) 상병과 소요시간</b>을 남깁니다. <b>의무기록 원문과 환자 정보는 저장하지 않습니다.</b> 사용자는 템플릿 ID(무작위 문자열)로만 구분됩니다. 기록은 이 브라우저에 저장되니 정기적으로 CSV로 내보내세요.</p>
+    <label style="display:flex;gap:8px;align-items:center;color:var(--txt);font-size:15px"><input type="checkbox" id="resOn" style="width:auto"> 연구용 사용 기록 켜기 (IRB 승인 후)</label>
+    <label>기관 코드</label><input id="resSite" placeholder="예: DS01">
+    <label>IRB 승인번호</label><input id="resIrb" placeholder="승인 후 입력">
+    <div class="row"><button class="btn" onclick="saveResearch()">저장</button></div>
+  </div>
+  <div class="card"><h3>현황</h3><div id="resOut"></div></div>
+  <div class="card">
+    <h3>CSV 내보내기</h3>
+    <div class="row">
+      <button class="btn sec" onclick="exportResLogs()">사용 로그</button>
+      <button class="btn sec" onclick="exportGaps()">괴리 사례</button>
+      <button class="btn sec" onclick="exportReqLogs()">심사팀 요청기록</button>
+      <button class="btn danger" onclick="clearResearch()" style="margin-left:auto">사용 로그 지우기</button>
+    </div>
+    <p class="mut" style="margin:8px 0 0">엑셀에서 바로 열립니다(UTF-8). 여러 PC에서 쓴 경우 PC마다 내보내 합치면 됩니다.</p>
+  </div>
+</section>
 
 <!-- 설정 -->
 <section class="tab" id="tab-set">
@@ -341,6 +377,7 @@
     <div class="rule"><b>요청기록</b> — 심사팀이 상병 수정을 요청할 때마다 상황·원래 코드·요청 코드·사유를 적습니다. 환자 식별정보는 적지 마세요. "규칙화"를 누르면 규칙 입력 칸에 자동으로 채워집니다.</div>
     <div class="rule"><b>규칙</b> — 점검·추천이 사용하는 병원 규칙 목록. 종류는 세 가지: 처방→필요 상병, 코드→사용불가·교체, 기록 작성 유의사항. 조건은 쉼표로 여러 개(모두 만족), 같은 뜻은 |로 묶습니다(예: gaster|가스터). 여기 넣은 규칙은 AI 추천에도 자동 반영됩니다.</div>
     <div class="rule"><b>분석</b> — 요청기록이 쌓이면 반복 패턴, 자주 나오는 상황, 월별 건수를 보여 줍니다. 두 번 이상 반복됐는데 규칙이 없으면 "규칙화 권장"이 표시됩니다.</div>
+    <div class="rule"><b>연구</b> — IRB 승인 후 켜는 연구용 사용 기록. 추천 상병·경고·최종 Imp) 상병·소요시간을 원문 없이 남기고, 사용 로그·괴리 사례·심사팀 요청기록을 CSV로 내보냅니다. 기준-임상 괴리 사례는 요청기록 탭 아래쪽에서 적습니다.</div>
     <h4 style="margin:14px 0 4px;color:var(--pri);font-size:14px">참고·설정</h4>
     <div class="rule"><b>기준</b> — 의무기록실 안내문 원문. 읽기 전용입니다.</div>
     <div class="rule"><b>설정</b> — API 키·모델·연결 테스트, 코드표 상태, 규칙·기록 백업(내보내기/가져오기), 기본 규칙 초기화.</div>
@@ -522,22 +559,22 @@ function onsetCheck(text){ // NEDIS: 2일 이내 발병은 시각까지
   return null;
 }
 function checkHtml(text){ // returns {html,n,codes}
-  const inp=analyze(text);let html='',n=0;
-  const oc=onsetCheck(text);if(oc){n++;html+=`<div class="alert ${oc.sev}"><div class="t">기록 — ${esc(oc.title)}</div><div class="mut">${esc(oc.note)}</div></div>`}
+  const inp=analyze(text);let html='',n=0;const hits=[];
+  const oc=onsetCheck(text);if(oc){n++;hits.push({t:oc.title,sev:oc.sev,type:'doc'});html+=`<div class="alert ${oc.sev}"><div class="t">기록 — ${esc(oc.title)}</div><div class="mut">${esc(oc.note)}</div></div>`}
   for(const r of DB.rules){
     if(!ruleHits(r,inp))continue;const ev=evalRule(r,inp);
     if(r.type==='order'){
       if(ev.satisfied)html+=`<div class="alert ok"><div class="t">✔ ${esc(r.title)}</div><div class="mut">필요 상병 있음</div></div>`;
-      else{n++;html+=`<div class="alert ${r.sev||'bad'}"><div class="t">상병 누락 — ${esc(r.title)}</div><div>다음 중 하나 입력:</div><div>${ev.addList.map(c=>codeChip(c)).join('')}</div><div class="mut">${esc(r.note||'')}</div></div>`}
+      else{n++;hits.push({t:r.title,sev:r.sev,type:r.type});html+=`<div class="alert ${r.sev||'bad'}"><div class="t">상병 누락 — ${esc(r.title)}</div><div>다음 중 하나 입력:</div><div>${ev.addList.map(c=>codeChip(c)).join('')}</div><div class="mut">${esc(r.note||'')}</div></div>`}
     }else if(r.type==='code'){
-      if(ev.avoidList.length&&!ev.present.length&&!(ev.addList.length&&!ev.satisfied))continue;n++;
+      if(ev.avoidList.length&&!ev.present.length&&!(ev.addList.length&&!ev.satisfied))continue;n++;hits.push({t:r.title,sev:r.sev,type:r.type});
       html+=`<div class="alert ${r.sev||'bad'}"><div class="t">${esc(r.title)}</div>`;
       if(ev.present.length)html+=`<div>문제 코드: ${ev.present.map(c=>codeChip(c)).join('')}</div>`;
       if(ev.addList.length)html+=`<div>${ev.satisfied?'대체/추가 상병 있음':'대체/추가 상병:'} ${ev.addList.map(c=>codeChip(c)).join('')}</div>`;
       html+=`<div class="mut">${esc(r.note||'')}</div></div>`;
-    }else{n++;html+=`<div class="alert ${r.sev||'info'}"><div class="t">기록 — ${esc(r.title)}</div><div class="mut">${esc(r.note||'')}</div></div>`}
+    }else{n++;hits.push({t:r.title,sev:r.sev,type:r.type});html+=`<div class="alert ${r.sev||'info'}"><div class="t">기록 — ${esc(r.title)}</div><div class="mut">${esc(r.note||'')}</div></div>`}
   }
-  return {html,n,codes:inp.codes};
+  return {html,n,codes:inp.codes,hits};
 }
 function runCheck(){
   const text=document.getElementById('chkIn').value.trim();const out=document.getElementById('chkOut');if(!text){out.innerHTML='';return}
@@ -707,20 +744,78 @@ function addImpLine(line){const ta=document.getElementById('aiNote');let b=impBl
   const cur=b.lines.slice(b.i+1,b.j);if(cur.includes(line)){toast('이미 들어 있습니다');flashNote();return}
   let arr=[...cur];if(line.startsWith('(주)'))arr=[line,...arr.filter(x=>!x.startsWith('(주)'))];else if(line.startsWith('(부)')){const k=arr.findIndex(x=>/^R\/O/i.test(x));k<0?arr.push(line):arr.splice(k,0,line)}else arr.push(line);
   ta.value=[...b.lines.slice(0,b.i+1),...arr,...b.lines.slice(b.j)].join('\n');toast('Imp)에 추가: '+line);flashNote()}
-function copyNote(){const v=document.getElementById('aiNote').value;if(!v.trim()){toast('입력창이 비어 있습니다');return}copyText(v);toast('기록 전체 복사됨 — EMR에 붙여넣으세요')}
+function copyNote(){const v=document.getElementById('aiNote').value;if(!v.trim()){toast('입력창이 비어 있습니다');return}resLogFinal(v);copyText(v);toast('기록 전체 복사됨 — EMR에 붙여넣으세요')}
 function copyFullNote(imp){
   const ta=document.getElementById('aiNote');const out=fillImp(ta.value,imp);
   if(out===null){copyText(imp);toast('기록에 Imp)가 없어 진단명만 복사했습니다');return}
   ta.value=out;copyText(out);toast('Imp) 넣은 전체 기록 복사됨 — EMR에서 Ctrl+A → Ctrl+V');
 }
-function clearAI(){document.getElementById('aiNote').value='';document.getElementById('aiOrders').value='';document.getElementById('aiOut').innerHTML=''}
+/* ---------- 연구용 사용 로그 (기록 원문은 저장하지 않음) ---------- */
+function R(){if(!DB.research)DB.research={on:false,site:'',irb:'',logs:[]};if(!DB.gaps)DB.gaps=[];return DB.research}
+let curLogId=null;
+function issueCat(x){return /없는 코드/.test(x)?'코드표에없음':/불완전코드/.test(x)?'불완전코드':/주상병으로/.test(x)?'주상병불가':/누락/.test(x)?'필요상병누락':/규칙 위반/.test(x)?'병원규칙위반':'기타'}
+function dxList(j){return {main:j.main&&j.main.code?norm(j.main.code):'',sub:(j.sub||[]).filter(x=>x&&x.code).map(x=>norm(x.code)),ro:(j.ro||[]).filter(x=>x&&x.code).map(x=>norm(x.code))}}
+function resLogRec(j,issues,fixed,ctx,t0){const r=R();if(!r.on)return;
+  const dx=dxList(j);const all=[dx.main,...dx.sub,...dx.ro];const chk=checkHtml(ctx+'\n'+all.join(', '));
+  const e={id:uid(),ts:new Date().toISOString(),user:DB.settings.tplId||'',model:DB.settings.model||'',ai_ms:Date.now()-t0,t0,
+    rec_main:dx.main,rec_sub:dx.sub.join(' '),rec_ro:dx.ro.join(' '),
+    issues_initial:issues.length,issue_types:[...new Set(issues.map(issueCat))].join(' '),autofix:fixed?1:0,
+    final_issues:validateAI(j,ctx).length,
+    rule_flags:chk.hits.length,rule_bad:chk.hits.filter(h=>h.sev==='bad').length,rule_titles:chk.hits.map(h=>h.t).join(' | '),
+    fin_main:'',fin_sub:'',fin_ro:'',fin_ts:'',to_final_ms:'',accepted_main:'',n_added:'',n_removed:''};
+  r.logs.push(e);curLogId=e.id;save()}
+const NAME2CODE={};
+function nameToCode(nm){nm=nm.trim();if(!Object.keys(NAME2CODE).length)for(const r of KCD){NAME2CODE[r[1]]=NAME2CODE[r[1]]||r[0];if(r[4])r[4].split(' / ').forEach(a=>{NAME2CODE[a]=NAME2CODE[a]||r[0]})}
+  const m=nm.match(/^([A-Z]\d{2,5})\b/);return m?m[1]:(NAME2CODE[nm]||'?:'+nm)}
+function resLogFinal(note){const r=R();if(!r.on||!curLogId)return;const e=r.logs.find(x=>x.id===curLogId);if(!e)return;
+  const b=impBlock(note);if(!b)return;const lines=b.lines.slice(b.i+1,b.j);
+  const pick=re=>lines.filter(l=>re.test(l)).map(l=>nameToCode(l.replace(re,'')));
+  const fm=pick(/^\s*\(주\)\s*/),fs=pick(/^\s*\(부\)\s*/),fr=pick(/^\s*R\/O\s*/i);
+  e.fin_main=fm.join(' ');e.fin_sub=fs.join(' ');e.fin_ro=fr.join(' ');e.fin_ts=new Date().toISOString();e.to_final_ms=Date.now()-e.t0;
+  const rec=new Set([e.rec_main,...e.rec_sub.split(' '),...e.rec_ro.split(' ')].filter(Boolean)),fin=new Set([...fm,...fs,...fr]);
+  e.accepted_main=e.rec_main&&fm[0]===e.rec_main?1:0;e.n_added=[...fin].filter(c=>!rec.has(c)).length;e.n_removed=[...rec].filter(c=>!fin.has(c)).length;save()}
+function csvCell(v){v=v==null?'':String(v);return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v}
+function downloadCSV(name,rows){const csv='\ufeff'+rows.map(r=>r.map(csvCell).join(',')).join('\r\n');const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},500)}
+function stamp(){return new Date().toISOString().slice(0,10).replace(/-/g,'')}
+function exportResLogs(){const r=R();if(!r.logs.length){toast('사용 로그가 없습니다');return}
+  const cols=['id','ts','site','irb','user','model','ai_ms','rec_main','rec_sub','rec_ro','issues_initial','issue_types','autofix','final_issues','rule_flags','rule_bad','rule_titles','fin_main','fin_sub','fin_ro','fin_ts','to_final_ms','accepted_main','n_added','n_removed'];
+  downloadCSV(`dscode_usage_${stamp()}.csv`,[cols,...r.logs.map(e=>cols.map(c=>c==='site'?r.site:c==='irb'?r.irb:e[c]))])}
+function exportGaps(){if(!DB.gaps.length){toast('괴리 사례가 없습니다');return}
+  const cols=['id','date','site','context','clinical_need','rule','action','memo'];
+  downloadCSV(`dscode_gaps_${stamp()}.csv`,[cols,...DB.gaps.map(g=>cols.map(c=>c==='site'?R().site:g[c]))])}
+function exportReqLogs(){if(!DB.logs.length){toast('심사팀 요청기록이 없습니다');return}
+  const cols=['id','date','ctx','from','to','kind','why'];downloadCSV(`dscode_requests_${stamp()}.csv`,[cols,...DB.logs.map(l=>cols.map(c=>l[c]))])}
+function renderResearch(){const r=R();const el=document.getElementById('resOut');if(!el)return;
+  document.getElementById('resOn').checked=!!r.on;document.getElementById('resSite').value=r.site||'';document.getElementById('resIrb').value=r.irb||'';
+  const L=r.logs,fin=L.filter(e=>e.fin_ts);const pct=(a,b)=>b?Math.round(a/b*100)+'%':'-';const med=a=>{if(!a.length)return '-';a=[...a].sort((x,y)=>x-y);return Math.round(a[Math.floor(a.length/2)]/1000)+'초'};
+  el.innerHTML=`<table><tr><td>추천 건수</td><td><b>${L.length}</b></td></tr>
+   <tr><td>최종 Imp) 확정까지 간 건수</td><td>${fin.length} (${pct(fin.length,L.length)})</td></tr>
+   <tr><td>AI 주진단을 그대로 채택</td><td>${pct(fin.filter(e=>e.accepted_main===1).length,fin.length)}</td></tr>
+   <tr><td>첫 추천에 코드 문제가 있어 자동 보정</td><td>${pct(L.filter(e=>e.autofix).length,L.length)}</td></tr>
+   <tr><td>병원 규칙 경고가 1개 이상</td><td>${pct(L.filter(e=>e.rule_flags>0).length,L.length)}</td></tr>
+   <tr><td>추천 → 확정 소요시간(중앙값)</td><td>${med(fin.map(e=>+e.to_final_ms))}</td></tr>
+   <tr><td>기준-임상 괴리 사례</td><td>${DB.gaps.length}건</td></tr>
+   <tr><td>심사팀 수정요청 기록</td><td>${DB.logs.length}건</td></tr></table>`}
+function saveResearch(){const r=R();r.on=document.getElementById('resOn').checked;r.site=document.getElementById('resSite').value.trim();r.irb=document.getElementById('resIrb').value.trim();save();renderResearch();toast(r.on?'연구 기록 켜짐':'연구 기록 꺼짐')}
+function clearResearch(){if(!confirm('사용 로그를 모두 지울까요? (괴리 사례·요청기록은 유지) 먼저 CSV로 내보냈는지 확인하세요.'))return;R().logs=[];curLogId=null;save();renderResearch()}
+/* 괴리 사례 */
+function addGap(){const g=id=>document.getElementById(id).value.trim();
+  const x={id:uid(),date:g('gpDate')||new Date().toISOString().slice(0,10),context:g('gpCtx'),clinical_need:g('gpNeed'),rule:g('gpRule'),action:g('gpAct'),memo:g('gpMemo')};
+  if(!x.context&&!x.clinical_need){toast('상황이나 임상적 필요를 입력하세요');return}
+  DB.gaps.unshift(x);save();['gpCtx','gpNeed','gpRule','gpMemo'].forEach(i=>document.getElementById(i).value='');renderGaps();toast('괴리 사례 기록됨')}
+function delGap(id){if(!confirm('이 사례를 삭제할까요?'))return;DB.gaps=DB.gaps.filter(x=>x.id!==id);save();renderGaps()}
+function renderGaps(){R();const el=document.getElementById('gapList');if(!el)return;
+  const sel=document.getElementById('gpRule');if(sel&&!sel.dataset.filled){sel.innerHTML='<option value="">(선택 — 관련 규칙)</option>'+DB.rules.map(r=>`<option>${esc(r.title)}</option>`).join('')+'<option value="기타">기타(메모에 적기)</option>';sel.dataset.filled=1}
+  el.innerHTML=DB.gaps.length?'<div class="card"><table><tr><th>날짜</th><th>상황 / 임상적 필요</th><th>관련 기준 / 조치</th><th></th></tr>'+DB.gaps.map(x=>`<tr><td>${esc(x.date)}</td><td>${esc(x.context)}<div class="mut">${esc(x.clinical_need)}</div></td><td>${esc(x.rule)}<div class="mut">${esc(x.action)}${x.memo?' · '+esc(x.memo):''}</div></td><td><button class="btn danger sm" onclick="delGap('${x.id}')">삭제</button></td></tr>`).join('')+'</table></div>':'<div class="alert info">아직 괴리 사례가 없습니다.</div>'}
+function gapFromAI(){const last=window._lastHits||[];showTab('log');setTimeout(()=>{const s=document.getElementById('gpRule');if(last[0]){const o=[...s.options].find(o=>o.text===last[0]);if(o)s.value=o.text}document.getElementById('gapCard').scrollIntoView({behavior:'smooth'});document.getElementById('gpCtx').focus()},60)}
+function clearAI(){curLogId=null;document.getElementById('aiNote').value='';document.getElementById('aiOrders').value='';document.getElementById('aiOut').innerHTML=''}
 async function runAI(){
   const note=document.getElementById('aiNote').value.trim();const orders=document.getElementById('aiOrders').value.trim();const out=document.getElementById('aiOut');
   if(!note){toast('의무기록을 입력하세요');return}
   if(!aiReady()){out.innerHTML='<div class="alert warn"><div class="t">AI 연결 설정이 필요합니다</div>참고·설정 → 설정에서 응급실 비밀번호(또는 API 키)를 저장하세요.</div>';return}
   const ordersAll=orders;
   const masked=maskPHI(note);
-  const btn=document.getElementById('aiBtn');btn.disabled=true;btn.innerHTML='<span class="spin"></span>추천 중…';
+  const btn=document.getElementById('aiBtn');btn.disabled=true;btn.innerHTML='<span class="spin"></span>추천 중…';const t0=Date.now();
   out.innerHTML=`<div class="card"><details><summary>전송한 내용 (개인정보 자동 가림 적용)</summary><pre class="ref" style="margin-top:8px">${esc(masked)}${ordersAll?'\n\n[처방·검사·처치] '+esc(ordersAll):''}</pre></details></div>`;
   try{
     const user=`[의무기록]\n${masked}\n\n[처방·검사·처치]\n${ordersAll||'(기재 없음)'}`;
@@ -735,6 +830,7 @@ async function runAI(){
       try{const t2=await callClaude(sys,user+'\n\n[이전 추천]\n'+JSON.stringify(j)+'\n\n[보정 요청]\n'+fb,4000);const j2=parseJSON(t2);if(j2&&j2.main){j=j2;fixed=issues}}catch(e){}
     }
     renderAI(j,ordersAll+'\n'+masked,fixed);
+    resLogRec(j,issues,fixed,ordersAll+'\n'+masked,t0);
     setTimeout(()=>{const c=document.querySelector('#aiOut .card:nth-of-type(2), #aiOut .alert.info');(document.getElementById('impBox')||c||out).scrollIntoView({behavior:'smooth',block:'start'})},50);
   }catch(e){out.innerHTML+=`<div class="alert bad"><div class="t">호출 실패</div>${esc(e.message||e)}<div class="mut">병원 네트워크에서 접속이 막혀 있거나 비밀번호·키가 잘못되었을 수 있습니다. 설정 탭의 연결 테스트로 확인하세요.</div></div>`}
   finally{btn.disabled=false;btn.textContent='상병 추천'}
@@ -785,7 +881,7 @@ function denialTags(code,label){const f=kflags(code);const inT=!!KMAP[code];
 function renderAI(j,orders,fixed){
   const out=document.getElementById('aiOut');
   const all=[j.main,...(j.sub||[]),...(j.ro||[])].filter(x=>x&&x.code).map(x=>norm(x.code));
-  const chk=checkHtml([orders,...all].join(', '));
+  const chk=checkHtml([orders,...all].join(', '));window._lastHits=chk.hits.map(h=>h.t);
   const nm=d=>kname(d.code)||d.name||'';
   const impText=['(주) '+nm(j.main),...(j.sub||[]).filter(x=>x&&x.code).map(x=>'(부) '+nm(x)),...(j.ro||[]).filter(x=>x&&x.code).map(x=>'R/O '+nm(x))].join('\n');
   const summary=['(주) '+norm(j.main.code)+' '+nm(j.main),...(j.sub||[]).filter(x=>x&&x.code).map(x=>'(부) '+norm(x.code)+' '+nm(x)),...(j.ro||[]).filter(x=>x&&x.code).map(x=>'R/O '+norm(x.code)+' '+nm(x))].join('\n');
@@ -801,7 +897,7 @@ function renderAI(j,orders,fixed){
   h+='</div>';
   if((j.warnings||[]).length)h+=`<div class="alert warn"><div class="t">주의</div><ul style="margin:4px 0 0 18px;padding:0">${j.warnings.map(w=>'<li>'+esc(w)+'</li>').join('')}</ul></div>`;
   if((j.documentation||[]).length)h+=`<div class="alert info"><div class="t">기록 보완</div><ul style="margin:4px 0 0 18px;padding:0">${j.documentation.map(w=>'<li>'+esc(w)+'</li>').join('')}</ul></div>`;
-  h+=`<div class="card"><h3>병원 규칙 자동 점검 ${chk.n?`<span class="tag bad">${chk.n}건</span>`:'<span class="tag" style="background:#e8f6ee;color:var(--ok)">이상 없음</span>'}</h3>${chk.html||'<div class="mut">해당 규칙 없음</div>'}</div>`;
+  h+=`<div class="card"><h3>병원 규칙 자동 점검 ${chk.n?`<span class="tag bad">${chk.n}건</span>`:'<span class="tag" style="background:#e8f6ee;color:var(--ok)">이상 없음</span>'}</h3>${chk.html||'<div class="mut">해당 규칙 없음</div>'}${chk.n?'<div class="mut" style="margin-top:6px">급여기준 때문에 처방·검사·상병을 바꾸거나 비급여로 돌렸다면 → <a href="#" onclick="gapFromAI();return false">기준-임상 괴리 사례로 기록</a></div>':''}</div>`;
   h+=`<div class="mut" style="margin:4px 2px">추천은 참고용입니다. 최종 상병은 의사가 진료 내용에 맞게 확정하세요.</div>`;
   out.innerHTML+=h;
 }
@@ -896,15 +992,15 @@ function resetSeed(){if(!confirm('규칙을 기본 규칙으로 되돌립니다.
 
 /* ---------- 탭 ---------- */
 function showTab(t){renderNav(t);document.querySelectorAll('.tab').forEach(s=>s.classList.toggle('on',s.id==='tab-'+t));
-  if(t==='stats')renderStats();if(t==='rules')renderRules();if(t==='log')renderLogs();if(t==='search')runSearch();if(t==='set'){loadSettingsUI();renderTplSel()}}
-const GROUPS={care:[['ai','추천'],['search','검색'],['check','점검']],review:[['log','요청기록'],['rules','규칙'],['stats','분석']],info:[['ref','기준'],['set','설정'],['help','도움말']]};
+  if(t==='stats')renderStats();if(t==='rules')renderRules();if(t==='log'){renderLogs();renderGaps()}if(t==='res')renderResearch();if(t==='search')runSearch();if(t==='set'){loadSettingsUI();renderTplSel()}}
+const GROUPS={care:[['ai','추천'],['search','검색'],['check','점검']],review:[['log','요청기록'],['rules','규칙'],['stats','분석'],['res','연구']],info:[['ref','기준'],['set','설정'],['help','도움말']]};
 function groupOf(t){for(const g in GROUPS)if(GROUPS[g].some(x=>x[0]===t))return g;return 'care'}
 function renderNav(t){const g=groupOf(t);document.querySelectorAll('#navTop button').forEach(b=>b.classList.toggle('on',b.dataset.g===g));
   document.getElementById('navSub').innerHTML=GROUPS[g].map(([id,nm])=>`<button data-t="${id}" class="${id===t?'on':''}" onclick="showTab('${id}')">${nm}</button>`).join('')}
 document.querySelectorAll('#navTop button').forEach(b=>b.onclick=()=>showTab(GROUPS[b.dataset.g][0][0]));
 function renderAll(){renderRules();renderLogs();renderStats();updAiHint()}
 load();migrateLegend();renderTplSel();setKcd(KCD_BUILTIN,'내장 임시 코드표');loadKcdJson();renderAll();loadSettingsUI();
-document.getElementById('lgDate').value=new Date().toISOString().slice(0,10);
+document.getElementById('lgDate').value=new Date().toISOString().slice(0,10);document.getElementById('gpDate').value=new Date().toISOString().slice(0,10);R();
 showTab('ai');try{if(!localStorage.getItem('dscode_seen')){localStorage.setItem('dscode_seen','1');showTab('help')}}catch(e){}
 document.getElementById('aiNote').addEventListener('keydown',e=>{if(e.key==='Enter'&&(e.ctrlKey||e.metaKey)){e.preventDefault();runAI()}});
 document.getElementById('srchIn').addEventListener('keydown',e=>{if(e.key==='Enter')runSearch();if(e.key==='Escape')clearSearch()});
