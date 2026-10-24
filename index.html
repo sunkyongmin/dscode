@@ -268,6 +268,14 @@
     <label>IRB 승인번호</label><input id="resIrb" placeholder="승인 후 입력">
     <div class="row"><button class="btn" onclick="saveResearch()">저장</button></div>
   </div>
+  <div class="card">
+    <h3>당직별 무작위 배정 (세부연구 1)</h3>
+    <p class="mut" style="margin:0 0 6px">매달 당직표가 나오면 그 달 당직 날짜를 넣고 <b>배정</b>을 누르세요. 6회면 3회 사용 · 3회 미사용으로 무작위 배정되고, 한 번 배정한 달은 바꿀 수 없습니다(고정). 미사용 당직에는 추천 탭을 쓰지 마세요.</p>
+    <label>당직 날짜 (쉼표 또는 줄바꿈, 예: 2027-01-03, 2027-01-08 …)</label>
+    <textarea id="rzDates" style="min-height:60px" placeholder="2027-01-03&#10;2027-01-08"></textarea>
+    <div class="row"><button class="btn" onclick="randomizeShifts()">배정</button><button class="btn sec" onclick="exportRz()">배정표 CSV</button></div>
+    <div id="rzOut" style="margin-top:8px"></div>
+  </div>
   <div class="card"><h3>현황</h3><div id="resOut"></div></div>
   <div class="card">
     <h3>CSV 내보내기</h3>
@@ -757,7 +765,7 @@ function issueCat(x){return /없는 코드/.test(x)?'코드표에없음':/불완
 function dxList(j){return {main:j.main&&j.main.code?norm(j.main.code):'',sub:(j.sub||[]).filter(x=>x&&x.code).map(x=>norm(x.code)),ro:(j.ro||[]).filter(x=>x&&x.code).map(x=>norm(x.code))}}
 function resLogRec(j,issues,fixed,ctx,t0){const r=R();if(!r.on)return;
   const dx=dxList(j);const all=[dx.main,...dx.sub,...dx.ro];const chk=checkHtml(ctx+'\n'+all.join(', '));
-  const e={id:uid(),ts:new Date().toISOString(),user:DB.settings.tplId||'',model:DB.settings.model||'',ai_ms:Date.now()-t0,t0,
+  const e={id:uid(),ts:new Date().toISOString(),arm:currentArm(),user:DB.settings.tplId||'',model:DB.settings.model||'',ai_ms:Date.now()-t0,t0,
     rec_main:dx.main,rec_sub:dx.sub.join(' '),rec_ro:dx.ro.join(' '),
     issues_initial:issues.length,issue_types:[...new Set(issues.map(issueCat))].join(' '),autofix:fixed?1:0,
     final_issues:validateAI(j,ctx).length,
@@ -778,7 +786,7 @@ function csvCell(v){v=v==null?'':String(v);return /[",\n]/.test(v)?'"'+v.replace
 function downloadCSV(name,rows){const csv='\ufeff'+rows.map(r=>r.map(csvCell).join(',')).join('\r\n');const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},500)}
 function stamp(){return new Date().toISOString().slice(0,10).replace(/-/g,'')}
 function exportResLogs(){const r=R();if(!r.logs.length){toast('사용 로그가 없습니다');return}
-  const cols=['id','ts','site','irb','user','model','ai_ms','rec_main','rec_sub','rec_ro','issues_initial','issue_types','autofix','final_issues','rule_flags','rule_bad','rule_titles','fin_main','fin_sub','fin_ro','fin_ts','to_final_ms','accepted_main','n_added','n_removed'];
+  const cols=['id','ts','arm','site','irb','user','model','ai_ms','rec_main','rec_sub','rec_ro','issues_initial','issue_types','autofix','final_issues','rule_flags','rule_bad','rule_titles','fin_main','fin_sub','fin_ro','fin_ts','to_final_ms','accepted_main','n_added','n_removed'];
   downloadCSV(`dscode_usage_${stamp()}.csv`,[cols,...r.logs.map(e=>cols.map(c=>c==='site'?r.site:c==='irb'?r.irb:e[c]))])}
 function exportGaps(){if(!DB.gaps.length){toast('괴리 사례가 없습니다');return}
   const cols=['id','date','site','context','clinical_need','rule','action','memo'];
@@ -786,7 +794,7 @@ function exportGaps(){if(!DB.gaps.length){toast('괴리 사례가 없습니다')
 function exportReqLogs(){if(!DB.logs.length){toast('심사팀 요청기록이 없습니다');return}
   const cols=['id','date','ctx','from','to','kind','why'];downloadCSV(`dscode_requests_${stamp()}.csv`,[cols,...DB.logs.map(l=>cols.map(c=>l[c]))])}
 function renderResearch(){const r=R();const el=document.getElementById('resOut');if(!el)return;
-  document.getElementById('resOn').checked=!!r.on;document.getElementById('resSite').value=r.site||'';document.getElementById('resIrb').value=r.irb||'';
+  renderRz();document.getElementById('resOn').checked=!!r.on;document.getElementById('resSite').value=r.site||'';document.getElementById('resIrb').value=r.irb||'';
   const L=r.logs,fin=L.filter(e=>e.fin_ts);const pct=(a,b)=>b?Math.round(a/b*100)+'%':'-';const med=a=>{if(!a.length)return '-';a=[...a].sort((x,y)=>x-y);return Math.round(a[Math.floor(a.length/2)]/1000)+'초'};
   el.innerHTML=`<table><tr><td>추천 건수</td><td><b>${L.length}</b></td></tr>
    <tr><td>최종 Imp) 확정까지 간 건수</td><td>${fin.length} (${pct(fin.length,L.length)})</td></tr>
@@ -796,6 +804,21 @@ function renderResearch(){const r=R();const el=document.getElementById('resOut')
    <tr><td>추천 → 확정 소요시간(중앙값)</td><td>${med(fin.map(e=>+e.to_final_ms))}</td></tr>
    <tr><td>기준-임상 괴리 사례</td><td>${DB.gaps.length}건</td></tr>
    <tr><td>심사팀 수정요청 기록</td><td>${DB.logs.length}건</td></tr></table>`}
+function rzList(){const r=R();if(!r.rz)r.rz=[];return r.rz}
+function todayStr(){const d=new Date();return new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)}
+function shiftArm(dateStr){const x=rzList().find(z=>z.date===dateStr);return x?x.arm:''}
+function currentArm(){const t=todayStr(),y=new Date(Date.now()-864e5-new Date().getTimezoneOffset()*6e4).toISOString().slice(0,10);const h=new Date().getHours();return shiftArm(t)||(h<9?shiftArm(y):'')}
+function randomizeShifts(){const raw=document.getElementById('rzDates').value;const ds=[...new Set((raw.match(/\d{4}-\d{2}-\d{2}/g)||[]))].sort();
+  if(ds.length<2){toast('당직 날짜를 2개 이상 넣으세요');return}
+  const months=[...new Set(ds.map(d=>d.slice(0,7)))];const rz=rzList();
+  const done=months.filter(m=>rz.some(z=>z.date.slice(0,7)===m));if(done.length){alert(done.join(', ')+' 은(는) 이미 배정되어 바꿀 수 없습니다. 새 달만 넣으세요.');return}
+  for(const m of months){const md=ds.filter(d=>d.slice(0,7)===m);const k=Math.floor(md.length/2)+(md.length%2&&crypto.getRandomValues(new Uint8Array(1))[0]%2?1:0);
+    const arms=md.map((_,i)=>i<k?'사용':'미사용');for(let i=arms.length-1;i>0;i--){const j=crypto.getRandomValues(new Uint32Array(1))[0]%(i+1);[arms[i],arms[j]]=[arms[j],arms[i]]}
+    md.forEach((d,i)=>rz.push({date:d,arm:arms[i],assigned_at:new Date().toISOString()}))}
+  rz.sort((a,b)=>a.date<b.date?-1:1);save();document.getElementById('rzDates').value='';renderRz();toast('배정 완료 — 고정되었습니다')}
+function renderRz(){const el=document.getElementById('rzOut');if(!el)return;const rz=rzList();if(!rz.length){el.innerHTML='<div class="mut">아직 배정한 당직이 없습니다.</div>';return}
+  const t=todayStr();el.innerHTML='<table><tr><th>당직일</th><th>배정</th></tr>'+rz.map(z=>`<tr${z.date===t?' style="background:#fff7e6"':''}><td>${z.date}${z.date===t?' (오늘)':''}</td><td><b style="color:${z.arm==='사용'?'var(--ok)':'var(--mut)'}">${z.arm}</b></td></tr>`).join('')+'</table>'}
+function exportRz(){const rz=rzList();if(!rz.length){toast('배정표가 없습니다');return}downloadCSV(`dscode_randomization_${stamp()}.csv`,[['date','arm','assigned_at'],...rz.map(z=>[z.date,z.arm,z.assigned_at])])}
 function saveResearch(){const r=R();r.on=document.getElementById('resOn').checked;r.site=document.getElementById('resSite').value.trim();r.irb=document.getElementById('resIrb').value.trim();save();renderResearch();toast(r.on?'연구 기록 켜짐':'연구 기록 꺼짐')}
 function clearResearch(){if(!confirm('사용 로그를 모두 지울까요? (괴리 사례·요청기록은 유지) 먼저 CSV로 내보냈는지 확인하세요.'))return;R().logs=[];curLogId=null;save();renderResearch()}
 /* 괴리 사례 */
@@ -812,6 +835,7 @@ function clearAI(){curLogId=null;document.getElementById('aiNote').value='';docu
 async function runAI(){
   const note=document.getElementById('aiNote').value.trim();const orders=document.getElementById('aiOrders').value.trim();const out=document.getElementById('aiOut');
   if(!note){toast('의무기록을 입력하세요');return}
+  if(R().on&&currentArm()==='미사용'&&!confirm('오늘 당직은 연구 배정상 「미사용」입니다. 그래도 추천을 받을까요? (배정 위반으로 기록됩니다)'))return;
   if(!aiReady()){out.innerHTML='<div class="alert warn"><div class="t">AI 연결 설정이 필요합니다</div>참고·설정 → 설정에서 응급실 비밀번호(또는 API 키)를 저장하세요.</div>';return}
   const ordersAll=orders;
   const masked=maskPHI(note);
