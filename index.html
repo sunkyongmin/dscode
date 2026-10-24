@@ -331,7 +331,7 @@
     <label>템플릿 내용</label>
     <textarea id="tplText" style="min-height:220px;font-size:14px;line-height:1.5" placeholder="CC)&#10;onset)&#10;..."></textarea>
     <label>약어·형식 설명 (선택 — AI에게 전달됨)</label>
-    <textarea id="tplLegend" style="min-height:80px;font-size:13px" placeholder="예: Imp) 아래에 검사 결과, -> 다음은 최종 코멘트. A/N/V/D/C = anorexia/nausea/vomiting/diarrhea/constipation"></textarea>
+    <textarea id="tplLegend" style="min-height:80px;font-size:13px" placeholder="예: PEx) 다음에 검사 결과, 그다음 Imp), -> 다음은 최종 코멘트. A/N/V/D/C = anorexia/nausea/vomiting/diarrhea/constipation"></textarea>
     <div class="row">
       <button class="btn" onclick="saveTpl()">저장</button>
       <button class="btn sec" onclick="tplFromInput()">추천 탭 입력창 내용 가져오기</button>
@@ -648,13 +648,13 @@ function buildSystem(){
 4. 처방·검사·처치가 있으면 그 급여 인정에 필요한 상병이 빠지지 않게 합니다.
 5. 복통·구토·설사 등 위장관 증상으로 내원해 감염성 근거가 뚜렷하지 않으면, 이 병원은 A099 대신 K297(상세불명의 위염) 또는 K219(식도염을 동반하지 않은 위-식도역류병)를 주진단으로 씁니다. 하복부 압통처럼 국소 소견이 있으면 해당 부위 통증 코드(R1030 등)나 CT 적응증 r/o 상병을 부진단으로 더합니다.
 6. 아래 '동신병원 의무기록실·보험심사 규칙'을 반드시 따릅니다. 규칙과 충돌하는 코드는 절대 추천하지 않습니다.
-7. documentation에는 의무기록실·심사 규칙상 꼭 필요한데 실제로 빠진 것만 적습니다(예: suture했는데 wound 크기(cm) 없음, 2일 이내 발병인데 시각 없음, 시행한 CT의 소견이 어디에도 없음, ). Imp)는 상병을 정한 뒤 "(주) 진단명" 형식으로 채우는 칸이라 비어 있는 것이 정상이므로 지적하지 않습니다. 이 병원 기록 형식에서는 검사 결과를 Imp)와 "->" 사이에 적는 것이 정상이므로, 검사 결과의 위치를 옮기라고 하지 않습니다. "->" 이후 최종 코멘트(설명·투약·외래 계획)가 비어 있는 것은 상병 선정과 무관하므로 지적하지 않습니다. 형식·문체에 대한 일반적인 조언은 하지 않습니다. 해당 사항이 없으면 빈 배열로 둡니다.
+7. documentation에는 의무기록실·심사 규칙상 꼭 필요한데 실제로 빠진 것만 적습니다(예: suture했는데 wound 크기(cm) 없음, 2일 이내 발병인데 시각 없음, 시행한 CT의 소견이 어디에도 없음, ). Imp)는 상병을 정한 뒤 "(주) 진단명" 형식으로 채우는 칸이라 비어 있는 것이 정상이므로 지적하지 않습니다. 검사 결과는 Imp) 앞에 적든 Imp)와 "->" 사이에 적든 정상이므로, 검사 결과의 위치를 옮기라고 하지 않습니다. "->" 이후 최종 코멘트(설명·투약·외래 계획)가 비어 있는 것은 상병 선정과 무관하므로 지적하지 않습니다. 형식·문체에 대한 일반적인 조언은 하지 않습니다. 해당 사항이 없으면 빈 배열로 둡니다.
 8. 세분류(4~5자리)가 있는 상위코드(예: I10, R31, J45)는 '불완전코드'로 청구가 거절되므로 반드시 가장 세분화된 코드까지 씁니다. 외인코드(V,W,X,Y)와 일부 Z코드는 주진단으로 쓸 수 없습니다.
 9. 확신이 낮은 코드는 reason에 그 이유와 대안을 적습니다. 코드가 KCD-8에 실제로 존재하는지 확신이 없으면 "코드 확인 필요"라고 적습니다.
 
 이 기록을 쓴 의사의 기록 형식과 약어:
 ${curLegend()}
-비어 있는 항목(예: PI) 뒤에 내용 없음)은 기재되지 않은 것이므로 추정하지 않습니다. Imp) 아래 "->" 앞까지의 Initial V/S(내원 시 활력징후), EKG, X-ray, Lab, CT 등은 검사 결과입니다. 값이 비어 있는 항목은 시행하지 않았거나 기재하지 않은 것입니다(wnl = within normal limits, NSR = normal sinus rhythm). ROS/PEx에 (-)로 표시된 소견은 음성입니다.
+비어 있는 항목(예: PI) 뒤에 내용 없음)은 기재되지 않은 것이므로 추정하지 않습니다. 기록 안의 Initial V/S(내원 시 활력징후), EKG, X-ray, Lab, CT 등은 검사 결과입니다. 값이 비어 있는 항목은 시행하지 않았거나 기재하지 않은 것입니다(wnl = within normal limits, NSR = normal sinus rhythm). ROS/PEx에 (-)로 표시된 소견은 음성입니다.
 
 동신병원 의무기록실·보험심사 규칙:
 ${rulesForPrompt()}
@@ -697,18 +697,23 @@ normoactive bowel sound
 abd T/RT(-/-)
 CVAT(-/-)
 
-Imp)
-
 Initial V/S: 
 EKG: 
 X-ray: 
 Lab: 
 
+Imp)
+
 ->
 `;
-const LEGEND_DEFAULT=`기록 형식: CC) 주호소, onset) 발병시각(예: 1DA 21:00 = 1일 전 21시, DA = days ago), PMHx) 과거력, DM/HTN/DL 당뇨/고혈압/이상지질혈증, OP 수술력, PI) 현병력, ROS) 계통문진, PEx) 신체진찰, Imp) 추정진단. Imp)와 "->" 사이에는 검사 결과(lab, ECG, X-ray, CT 등)를 적고, "->" 다음은 최종 코멘트(결과 설명, 투약, 퇴실·외래·입원 계획)
+const LEGEND_DEFAULT=`기록 형식: CC) 주호소, onset) 발병시각(예: 1DA 21:00 = 1일 전 21시, DA = days ago), PMHx) 과거력, DM/HTN/DL 당뇨/고혈압/이상지질혈증, OP 수술력, PI) 현병력, ROS) 계통문진, PEx) 신체진찰, PEx) 다음에 검사 결과(Initial V/S, EKG, X-ray, Lab, CT 등), 그다음 Imp) 추정진단(상병), "->" 다음은 최종 코멘트(결과 설명, 투약, 퇴실·외래·입원 계획)
 약어: C/S/R = cough/sputum/rhinorrhea, A/N/V/D/C = anorexia/nausea/vomiting/diarrhea/constipation, PI- s exudate = pharyngeal injection 없음·삼출물 없음, RHB s murmur = regular heart beat without murmur, CBS = clear breath sound, abd T/RT = abdominal tenderness/rebound tenderness, CVAT = costovertebral angle tenderness, s = without, c = with, (-) 음성, (+) 양성`;
 const GENERIC_LEGEND='응급실 의무기록입니다. 일반적인 응급의학 약어(CC, PI, PMHx, ROS, PEx, Imp, s = without, c = with, (-) 음성, (+) 양성, wnl 등)를 사용합니다.';
+function resultsBeforeImp(t){ // 기존 템플릿: Imp) → 검사결과 → -> 순서를 검사결과 → Imp) → -> 로
+  const L=t.split('\n'),i=L.findIndex(l=>/^\s*imp\)\s*$/i.test(l)),k=L.findIndex(l=>/^\s*initial v\/s/i.test(l)),a=L.findIndex((l,x)=>x>k&&/^\s*->/.test(l));
+  if(i<0||k<0||a<0||!(i<k&&k<a))return t;
+  const res=L.slice(k,a);while(res.length&&!res[res.length-1].trim())res.pop();
+  return [...L.slice(0,i),...res,'','Imp)','',...L.slice(a)].join('\n')}
 function ensureTpls(){if(!Array.isArray(DB.templates)||!DB.templates.length){DB.templates=[{id:'default',name:'선경민 과장',text:NOTE_TEMPLATE,legend:DB.settings.legend||LEGEND_DEFAULT}];DB.settings.legend='';save()}
   if(!DB.templates.some(t=>t.id===DB.settings.tplId))DB.settings.tplId=DB.templates[0].id}
 function curTpl(){ensureTpls();return DB.templates.find(t=>t.id===DB.settings.tplId)||DB.templates[0]}
@@ -939,7 +944,7 @@ async function callClaude(system,user,maxTokens){
 
 /* ---------- 설정 ---------- */
 function migrateLegend(){const L=DB.settings.legend;if(L&&(L.includes('"->" 아래는 처치')||L.includes('A/N/V/D/R')||!L.includes('DA = days ago'))){DB.settings.legend='';save()}
-  ensureTpls();const d=DB.templates.find(t=>t.id==='default');if(d){if(d.name==='기본 템플릿')d.name='선경민 과장';if(!d.text.includes('Initial V/S')&&d.text.includes('A/N/V/D/'))d.text=NOTE_TEMPLATE;if(d.legend&&(d.legend.includes('A/N/V/D/R')||!d.legend.includes('DA = days ago')))d.legend=LEGEND_DEFAULT;save()}}
+  ensureTpls();const d=DB.templates.find(t=>t.id==='default');if(d){if(d.name==='기본 템플릿')d.name='선경민 과장';if(!d.text.includes('Initial V/S')&&d.text.includes('A/N/V/D/'))d.text=NOTE_TEMPLATE;if(!d.resBeforeImp){d.text=resultsBeforeImp(d.text);if(d.legend)d.legend=d.legend.replace('Imp) 추정진단. Imp)와 "->" 사이에는 검사 결과(lab, ECG, X-ray, CT 등)를 적고, "->" 다음은','PEx) 다음에 검사 결과(Initial V/S, EKG, X-ray, Lab, CT 등), 그다음 Imp) 추정진단(상병), "->" 다음은');d.resBeforeImp=1}if(d.legend&&(d.legend.includes('A/N/V/D/R')||!d.legend.includes('DA = days ago')))d.legend=LEGEND_DEFAULT;save()}}
 function loadSettingsUI(){const s=DB.settings;document.getElementById('setKey').value=s.key||'';document.getElementById('setMode').value=s.mode||'proxy';document.getElementById('setProxy').value=s.proxy||DEFAULT_PROXY;document.getElementById('setPass').value=s.pass||'';modeUI();const sel=document.getElementById('setModel');const std=[...sel.options].map(o=>o.value);
   if(std.includes(s.model)){sel.value=s.model}else{sel.value='custom';document.getElementById('setModelCustom').value=s.model||'';document.getElementById('setModelCustom').style.display='block'}}
 document.getElementById('setModel').onchange=e=>{document.getElementById('setModelCustom').style.display=e.target.value==='custom'?'block':'none'};
