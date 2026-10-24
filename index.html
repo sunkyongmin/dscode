@@ -100,7 +100,7 @@
       <textarea id="aiNote" style="min-height:240px;font-size:14px;line-height:1.5" placeholder="EMR 기록을 붙여넣으세요"></textarea>
       <details style="margin-top:6px"><summary>처방·처치를 따로 적기 (선택 — 기록에 없을 때만)</summary>
         <input id="aiOrders" style="margin-top:6px" placeholder="예: Gaster inj, Macperan, suture 3cm"></details></div></div>
-    <div class="step"><span class="num">3</span><div style="flex:1"><b>상병 추천 → Imp) 문구 복사 → EMR Imp) 아래 붙여넣기</b>
+    <div class="step"><span class="num">3</span><div style="flex:1"><b>상병 추천 → 「Imp) 넣어 전체 기록 복사」 → EMR에서 Ctrl+A, Ctrl+V</b>
       <div class="row" style="margin:6px 0 0">
         <button class="btn" id="aiBtn" onclick="runAI()">상병 추천</button><span class="mut">Ctrl+Enter</span>
         <button class="btn sec" onclick="clearAI()" style="margin-left:auto">다음 환자 (비우기)</button>
@@ -325,7 +325,7 @@
       <li><b>새 환자</b>: 추천 탭에서 본인 템플릿을 고르고 <b>템플릿 복사</b> → EMR free text에 붙여넣기 (메모장에 매번 다시 칠 필요 없음)</li>
       <li><b>진료·검사</b>: 평소처럼 EMR에 문진·진찰·검사 결과를 기록</li>
       <li><b>상병 정할 때</b>: EMR 기록 전체를 복사해 추천 탭에 붙여넣고 <b>상병 추천</b> (Ctrl+Enter)</li>
-      <li><b>Imp) 문구 복사</b> → EMR의 Imp) 아래에 붙여넣기. 끝나면 <b>다음 환자</b>로 비우기</li>
+      <li><b>Imp) 넣어 전체 기록 복사</b> → EMR free text에서 Ctrl+A, Ctrl+V. Imp) 아래에 진단명이 들어간 기록으로 통째로 바뀝니다. 앱에 붙여넣은 뒤 EMR에서 기록을 더 고쳤다면 다시 붙여넣고 추천받거나 "진단명만 복사"를 쓰세요. 끝나면 <b>다음 환자</b>로 비우기</li>
       <li>코드 하나만 빨리 찾을 때는 <b>검색</b> 탭, 처방과 상병 조합만 확인할 때는 <b>점검</b> 탭</li>
       <li>심사팀이 수정을 요청하면 <b>요청기록</b>에 적어 두고, 반복되면 <b>규칙</b>으로 만들기</li>
     </ol>
@@ -680,6 +680,19 @@ function saveTpl(){const name=document.getElementById('tplName').value.trim(),te
 function delTpl(id){if(DB.templates.length<=1){toast('템플릿이 하나는 있어야 합니다');return}const t=DB.templates.find(x=>x.id===id);if(!confirm(`"${t.name}" 템플릿을 삭제할까요?`))return;DB.templates=DB.templates.filter(x=>x.id!==id);if(DB.settings.tplId===id)DB.settings.tplId=DB.templates[0].id;save();renderTplSel()}
 function copyTemplate(){copyText(curTpl().text);toast('템플릿 복사됨 — EMR에 붙여넣으세요')}
 function insertTemplate(){const ta=document.getElementById('aiNote');if(ta.value.trim()&&!confirm('현재 내용을 지우고 템플릿을 넣을까요?'))return;ta.value=curTpl().text;ta.focus();ta.setSelectionRange(3,3)}
+function fillImp(note,imp){
+  const lines=note.replace(/\r/g,'').split('\n');const i=lines.findIndex(l=>/^\s*imp\)/i.test(l));
+  if(i<0)return null;
+  const rest=lines[i].replace(/^\s*imp\)\s*/i,'');
+  let j=i+1;while(j<lines.length&&/^\s*\((주|부)\)|^\s*R\/O\s/i.test(lines[j]))j++;   // 이전에 넣은 진단명은 교체
+  const head=rest&&!/^\((주|부)\)|^R\/O\s/i.test(rest)?['Imp) '+rest]:['Imp)'];
+  return [...lines.slice(0,i),...head,...imp.split('\n'),...lines.slice(j)].join('\n');
+}
+function copyFullNote(imp){
+  const ta=document.getElementById('aiNote');const out=fillImp(ta.value,imp);
+  if(out===null){copyText(imp);toast('기록에 Imp)가 없어 진단명만 복사했습니다');return}
+  ta.value=out;copyText(out);toast('Imp) 넣은 전체 기록 복사됨 — EMR에서 Ctrl+A → Ctrl+V');
+}
 function clearAI(){document.getElementById('aiNote').value='';document.getElementById('aiOrders').value='';document.getElementById('aiOut').innerHTML=''}
 async function runAI(){
   const note=document.getElementById('aiNote').value.trim();const orders=document.getElementById('aiOrders').value.trim();const out=document.getElementById('aiOut');
@@ -757,7 +770,8 @@ function renderAI(j,orders,fixed){
   const summary=['(주) '+norm(j.main.code)+' '+nm(j.main),...(j.sub||[]).filter(x=>x&&x.code).map(x=>'(부) '+norm(x.code)+' '+nm(x)),...(j.ro||[]).filter(x=>x&&x.code).map(x=>'R/O '+norm(x.code)+' '+nm(x))].join('\n');
   const q=t=>JSON.stringify(t).replace(/"/g,'&quot;');
   let h=fixed&&fixed.length?`<div class="alert info"><div class="t">첫 추천을 자동 보정했습니다</div><ul style="margin:4px 0 0 18px;padding:0">${fixed.map(x=>'<li>'+esc(x.split(':')[0].slice(0,80))+'</li>').join('')}</ul></div>`:'';
-  h+=`<div class="card"><div class="row" style="margin:0 0 8px"><h3 style="margin:0;flex:1">추천 상병</h3><button class="btn sm" onclick="copyText(${q(impText)})" title="EMR Imp)란에 붙여넣을 진단명 문구">Imp) 문구 복사</button><button class="btn sec sm" onclick="copyText(${q(summary)})">코드 포함 복사</button></div>
+  h+=`<div class="card"><div class="row" style="margin:0 0 8px"><h3 style="margin:0;flex:1">추천 상병</h3><button class="btn" onclick="copyFullNote(${q(impText)})" title="Imp) 아래에 진단명을 넣은 전체 기록을 복사">Imp) 넣어 전체 기록 복사</button></div>
+   <div class="mut" style="margin:-2px 0 8px">EMR free text에서 <b>Ctrl+A → Ctrl+V</b> 하면 Imp) 아래에 진단명이 들어간 기록으로 바뀝니다. <span style="white-space:nowrap">다른 방법: <a href="#" onclick="copyText(${q(impText)});return false">진단명만 복사</a> · <a href="#" onclick="copyText(${q(summary)});return false">코드 포함 복사</a></span></div>
    <pre class="ref" id="impBox" style="margin:0 0 8px;font-size:15px">${esc(impText)}</pre>`;
   h+=dxCard('주진단',j.main);
   (j.sub||[]).forEach(s=>h+=dxCard('부진단',s));
