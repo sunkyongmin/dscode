@@ -534,13 +534,13 @@ function buildSystem(){
 4. 처방·검사·처치가 있으면 그 급여 인정에 필요한 상병이 빠지지 않게 합니다.
 5. 복통·구토·설사 등 위장관 증상으로 내원해 감염성 근거가 뚜렷하지 않으면, 이 병원은 A099 대신 K297(상세불명의 위염) 또는 K219(식도염을 동반하지 않은 위-식도역류병)를 주진단으로 씁니다. 하복부 압통처럼 국소 소견이 있으면 해당 부위 통증 코드(R1030 등)나 CT 적응증 r/o 상병을 부진단으로 더합니다.
 6. 아래 '동신병원 의무기록실·보험심사 규칙'을 반드시 따릅니다. 규칙과 충돌하는 코드는 절대 추천하지 않습니다.
-7. 기록 보완이 필요한 점(예: wound 크기 미기재, 발병시각 미기재, CT 소견 미기재)이 있으면 documentation에 적습니다.
+7. documentation에는 의무기록실·심사 규칙상 꼭 필요한데 실제로 빠진 것만 적습니다(예: suture했는데 wound 크기(cm) 없음, 2일 이내 발병인데 시각 없음, 시행한 CT의 소견이 어디에도 없음, Imp) 비어 있음). 이 병원 기록 형식에서는 검사 결과를 Imp)와 "->" 사이에 적는 것이 정상이므로, 검사 결과의 위치를 옮기라고 하지 않습니다. "->" 이후 최종 코멘트(설명·투약·외래 계획)가 비어 있는 것은 상병 선정과 무관하므로 지적하지 않습니다. 형식·문체에 대한 일반적인 조언은 하지 않습니다. 해당 사항이 없으면 빈 배열로 둡니다.
 8. 세분류(4~5자리)가 있는 상위코드(예: I10, R31, J45)는 '불완전코드'로 청구가 거절되므로 반드시 가장 세분화된 코드까지 씁니다. 외인코드(V,W,X,Y)와 일부 Z코드는 주진단으로 쓸 수 없습니다.
 9. 확신이 낮은 코드는 reason에 그 이유와 대안을 적습니다. 코드가 KCD-8에 실제로 존재하는지 확신이 없으면 "코드 확인 필요"라고 적습니다.
 
 이 응급실의 기록 형식과 약어:
 ${DB.settings.legend||LEGEND_DEFAULT}
-비어 있는 항목(예: PI) 뒤에 내용 없음)은 기재되지 않은 것이므로 추정하지 않습니다. ROS/PEx에 (-)로 표시된 소견은 음성입니다.
+비어 있는 항목(예: PI) 뒤에 내용 없음)은 기재되지 않은 것이므로 추정하지 않습니다. Imp) 아래 "->" 앞까지의 lab/ECG(EKG)/X-ray/CT 등은 검사 결과입니다(wnl = within normal limits, NSR = normal sinus rhythm). ROS/PEx에 (-)로 표시된 소견은 음성입니다.
 
 동신병원 의무기록실·보험심사 규칙:
 ${rulesForPrompt()}
@@ -684,6 +684,7 @@ async function callClaude(system,user,maxTokens){
 }
 
 /* ---------- 설정 ---------- */
+function migrateLegend(){const L=DB.settings.legend;if(L&&(L.includes('"->" 아래는 처치')||L.includes('A/N/V/D/R')||!L.includes('DA = days ago'))){DB.settings.legend='';save()}}
 function loadSettingsUI(){const s=DB.settings;document.getElementById('setKey').value=s.key||'';document.getElementById('setLegend').value=s.legend||LEGEND_DEFAULT;const sel=document.getElementById('setModel');const std=[...sel.options].map(o=>o.value);
   if(std.includes(s.model)){sel.value=s.model}else{sel.value='custom';document.getElementById('setModelCustom').value=s.model||'';document.getElementById('setModelCustom').style.display='block'}}
 document.getElementById('setModel').onchange=e=>{document.getElementById('setModelCustom').style.display=e.target.value==='custom'?'block':'none'};
@@ -766,7 +767,7 @@ function renderNav(t){const g=groupOf(t);document.querySelectorAll('#navTop butt
   document.getElementById('navSub').innerHTML=GROUPS[g].map(([id,nm])=>`<button data-t="${id}" class="${id===t?'on':''}" onclick="showTab('${id}')">${nm}</button>`).join('')}
 document.querySelectorAll('#navTop button').forEach(b=>b.onclick=()=>showTab(GROUPS[b.dataset.g][0][0]));
 function renderAll(){renderRules();renderLogs();renderStats();updAiHint()}
-load();setKcd(KCD_BUILTIN,'내장 임시 코드표');loadKcdJson();renderAll();loadSettingsUI();
+load();migrateLegend();setKcd(KCD_BUILTIN,'내장 임시 코드표');loadKcdJson();renderAll();loadSettingsUI();
 document.getElementById('lgDate').value=new Date().toISOString().slice(0,10);
 showTab('search');try{if(!localStorage.getItem('dscode_seen')){localStorage.setItem('dscode_seen','1');showTab('help')}}catch(e){}
 document.getElementById('srchIn').addEventListener('keydown',e=>{if(e.key==='Enter')runSearch();if(e.key==='Escape')clearSearch()});
