@@ -228,8 +228,9 @@
     <input id="rfAdd" placeholder="예: J459:상세불명의 천식">
     <label>사용불가·지양 상병 — 코드:이름</label>
     <input id="rfAvoid" placeholder="예: R53:전신쇠약">
-    <label>심각도</label>
-    <select id="rfSev"><option value="bad">사용불가/삭감</option><option value="warn">주의/지양</option><option value="info">참고</option></select>
+    <label>경고 색 (조건이 맞을 때 어떤 수준으로 알릴지)</label>
+    <select id="rfSev"><option value="bad">빨강 — 삭감·사용불가 수준</option><option value="warn">노랑 — 주의·지양</option><option value="info">파랑 — 참고</option></select>
+    <p class="mut" style="margin:4px 0 0">처방→상병 규칙에서는 "필요 상병이 없을 때" 이 색으로 경고합니다. 필요 상병 자체가 사용불가라는 뜻이 아닙니다.</p>
     <label>설명·근거</label><textarea id="rfNote" style="min-height:60px" placeholder="예: 의무기록실 안내(2). 주진단 사용 불가"></textarea>
     <div class="row">
       <button class="btn" onclick="saveRule()">저장</button>
