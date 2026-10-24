@@ -662,8 +662,8 @@ function renderAI(j,orders,fixed){
   const all=[j.main,...(j.sub||[]),...(j.ro||[])].filter(x=>x&&x.code).map(x=>norm(x.code));
   const chk=checkHtml([orders,...all].join(', '));
   const nm=d=>kname(d.code)||d.name||'';
-  const impText=['(주) '+nm(j.main),...(j.sub||[]).filter(x=>x&&x.code).map(x=>'(부) '+nm(x)),...(j.ro||[]).filter(x=>x&&x.code).map(x=>'(부) r/o '+nm(x))].join('\n');
-  const summary=['(주) '+norm(j.main.code)+' '+nm(j.main),...(j.sub||[]).filter(x=>x&&x.code).map(x=>'(부) '+norm(x.code)+' '+nm(x)),...(j.ro||[]).filter(x=>x&&x.code).map(x=>'(부) r/o '+norm(x.code)+' '+nm(x))].join('\n');
+  const impText=['(주) '+nm(j.main),...(j.sub||[]).filter(x=>x&&x.code).map(x=>'(부) '+nm(x)),...(j.ro||[]).filter(x=>x&&x.code).map(x=>'R/O '+nm(x))].join('\n');
+  const summary=['(주) '+norm(j.main.code)+' '+nm(j.main),...(j.sub||[]).filter(x=>x&&x.code).map(x=>'(부) '+norm(x.code)+' '+nm(x)),...(j.ro||[]).filter(x=>x&&x.code).map(x=>'R/O '+norm(x.code)+' '+nm(x))].join('\n');
   const q=t=>JSON.stringify(t).replace(/"/g,'&quot;');
   let h=fixed&&fixed.length?`<div class="alert info"><div class="t">첫 추천을 자동 보정했습니다</div><ul style="margin:4px 0 0 18px;padding:0">${fixed.map(x=>'<li>'+esc(x.split(':')[0].slice(0,80))+'</li>').join('')}</ul></div>`:'';
   h+=`<div class="card"><div class="row" style="margin:0 0 8px"><h3 style="margin:0;flex:1">추천 상병</h3><button class="btn sm" onclick="copyText(${q(impText)})" title="EMR Imp)란에 붙여넣을 진단명 문구">Imp) 문구 복사</button><button class="btn sec sm" onclick="copyText(${q(summary)})">코드 포함 복사</button></div>
