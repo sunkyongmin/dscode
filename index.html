@@ -358,7 +358,6 @@ const SEED_RULES=[
  {type:'code',title:'Z035 주진단 불가',when:['Z035'],sev:'warn',note:SRC2+' 2-3. 부상병으로만'},
  {type:'doc',title:'Suture 시 wound 크기(cm) 기재',when:['suture|봉합|laceration|열상|lac'],sev:'warn',note:SRC2+' 3-3. 경과기록에 wound \'cm\' 기재'},
  {type:'doc',title:'인수인계·재내원 시 CC, PI, IMP, Onset 기재',when:['인수인계|재내원|revisit'],sev:'info',note:SRC1+' 5'},
- {type:'doc',title:'발병시간: 2일 이내는 시각까지','when':['onset|발병'],sev:'info',note:SRC1+' 6. NEDIS 전송 필요. 예) 2일전 7시'},
 ];
 
 /* ---------- 저장소 ---------- */
@@ -366,10 +365,16 @@ const KEY='dscode_v2';
 let DB={rules:[],logs:[],codeNotes:{},recent:[],settings:{key:'',model:'claude-sonnet-5-5'}};
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6)}
 function load(){
-  try{const s=localStorage.getItem(KEY);if(s){const d=JSON.parse(s);DB={...DB,...d};DB.settings={...{key:'',model:'claude-sonnet-5-5'},...(d.settings||{})};return}}catch(e){}
-  try{const old=localStorage.getItem('dscode_v1');if(old){const d=JSON.parse(old);DB.rules=d.rules||[];DB.logs=d.logs||[]}}catch(e){}
-  if(!DB.rules.length||DB.rules.every(r=>r.src==='seed'))DB.rules=SEED_RULES.map(r=>({...r,id:uid(),src:'seed'}));
-  else{const have=new Set(DB.rules.map(r=>r.title));SEED_RULES.filter(r=>!have.has(r.title)).forEach(r=>DB.rules.push({...r,id:uid(),src:'seed'}))}
+  let loaded=false;
+  try{const s=localStorage.getItem(KEY);if(s){const d=JSON.parse(s);DB={...DB,...d};DB.settings={...{key:'',model:'claude-sonnet-5-5'},...(d.settings||{})};loaded=true}}catch(e){}
+  if(!loaded){try{const old=localStorage.getItem('dscode_v1');if(old){const d=JSON.parse(old);DB.rules=d.rules||[];DB.logs=d.logs||[]}}catch(e){}}
+  const seedTitles=new Set(SEED_RULES.map(r=>r.title));
+  if(!DB.rules.length||DB.rules.every(r=>r.src==='seed')){DB.rules=SEED_RULES.map(r=>({...r,id:uid(),src:'seed'}))}
+  else{
+    DB.rules=DB.rules.filter(r=>!(r.src==='seed'&&!seedTitles.has(r.title)));   // 폐기된 기본 규칙 제거
+    const have=new Set(DB.rules.map(r=>r.title));
+    SEED_RULES.filter(r=>!have.has(r.title)).forEach(r=>DB.rules.push({...r,id:uid(),src:'seed'}));   // 새 기본 규칙 추가
+  }
   save();
 }
 function save(){try{localStorage.setItem(KEY,JSON.stringify(DB))}catch(e){}}
@@ -432,8 +437,24 @@ function evalRule(rule,inp){
   const satisfied=addList.length===0||addList.some(a=>inp.codes.some(c=>c===a.code||c.startsWith(a.code)));
   return {addList,avoidList,present,satisfied};
 }
+function onsetCheck(text){ // NEDIS: 2일 이내 발병은 시각까지
+  const m=text.match(/onset\)[ \t]*([^\n]*)/i);if(!m)return null;const v=m[1].trim();
+  const src=SRC1+' 6. NEDIS 전송 시 필요';
+  if(!v)return {sev:'warn',title:'발병시각 미기재',note:src+'. 예) 1DA 21:00, 2일전 7시'};
+  const lv=v.toLowerCase();let days=null;
+  let d=lv.match(/(\d+)\s*(da\b|d\s*ago|days?\s*ago|일\s*전|일전)/);if(d)days=+d[1];
+  else if(/(\d+)\s*(w|wk|wks|weeks?|주|개월|달|months?|mo|y|yr|years?|년)\b|(\d+)\s*(주|개월|달|년)/.test(lv))days=99;
+  else if(/그제|그저께/.test(lv))days=2;else if(/어제|yesterday/.test(lv))days=1;
+  else if(/오늘|금일|당일|today|내원\s*직전|방금|\d+\s*(hr|hrs|hours?|h|시간|분|min)\b|\d+\s*(시간|분)\s*전/.test(lv))days=0;
+  const hasTime=/\d{1,2}\s*:\s*\d{2}|\d{1,2}\s*시|\d{1,2}\s*(am|pm)\b|\d+\s*(hr|hrs|hours?|h|시간|분|min)\b|\d+\s*(시간|분)\s*전/.test(lv);
+  if(/불명|모름|unknown|unk\b|미상/.test(lv))return null;
+  if(days===null&&!hasTime)return {sev:'info',title:'발병시각 형식 확인',note:src+`. "${v}" — 며칠 전인지와 시각을 함께 적으세요. 예) 1DA 21:00`};
+  if(days!==null&&days<=2&&!hasTime)return {sev:'warn',title:'2일 이내 발병은 시각까지 기재',note:src+`. "${v}" → 예) ${days}DA 21:00`};
+  return null;
+}
 function checkHtml(text){ // returns {html,n,codes}
   const inp=analyze(text);let html='',n=0;
+  const oc=onsetCheck(text);if(oc){n++;html+=`<div class="alert ${oc.sev}"><div class="t">기록 — ${esc(oc.title)}</div><div class="mut">${esc(oc.note)}</div></div>`}
   for(const r of DB.rules){
     if(!ruleHits(r,inp))continue;const ev=evalRule(r,inp);
     if(r.type==='order'){
@@ -566,7 +587,7 @@ Imp)
 
 ->
 `;
-const LEGEND_DEFAULT=`기록 형식: CC) 주호소, onset) 발병시각, PMHx) 과거력, DM/HTN/DL 당뇨/고혈압/이상지질혈증, OP 수술력, PI) 현병력, ROS) 계통문진, PEx) 신체진찰, Imp) 추정진단. Imp)와 "->" 사이에는 검사 결과(lab, ECG, X-ray, CT 등)를 적고, "->" 다음은 최종 코멘트(결과 설명, 투약, 퇴실·외래·입원 계획)
+const LEGEND_DEFAULT=`기록 형식: CC) 주호소, onset) 발병시각(예: 1DA 21:00 = 1일 전 21시, DA = days ago), PMHx) 과거력, DM/HTN/DL 당뇨/고혈압/이상지질혈증, OP 수술력, PI) 현병력, ROS) 계통문진, PEx) 신체진찰, Imp) 추정진단. Imp)와 "->" 사이에는 검사 결과(lab, ECG, X-ray, CT 등)를 적고, "->" 다음은 최종 코멘트(결과 설명, 투약, 퇴실·외래·입원 계획)
 약어: C/S/R = cough/sputum/rhinorrhea, A/N/V/D/C = anorexia/nausea/vomiting/diarrhea/constipation, PI- s exudate = pharyngeal injection 없음·삼출물 없음, RHB s murmur = regular heart beat without murmur, CBS = clear breath sound, abd T/RT = abdominal tenderness/rebound tenderness, CVAT = costovertebral angle tenderness, s = without, c = with, (-) 음성, (+) 양성`;
 function insertTemplate(){const ta=document.getElementById('aiNote');if(ta.value.trim()&&!confirm('현재 내용을 지우고 템플릿을 넣을까요?'))return;ta.value=NOTE_TEMPLATE;ta.focus();ta.setSelectionRange(3,3)}
 function clearAI(){document.getElementById('aiNote').value='';document.getElementById('aiOrders').value='';document.getElementById('aiOut').innerHTML=''}
