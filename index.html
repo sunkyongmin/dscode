@@ -61,6 +61,9 @@
   .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#222;color:#fff;padding:9px 16px;border-radius:20px;font-size:13px;opacity:0;transition:.25s;pointer-events:none;z-index:9}
   .toast.show{opacity:1}
   details summary{cursor:pointer;color:var(--pri);font-size:14px}
+  .step{display:flex;gap:12px;align-items:flex-start;padding:10px 0;border-bottom:1px dashed var(--line)}
+  .step:last-child{border-bottom:0;padding-bottom:0}.step:first-child{padding-top:0}
+  .step .num{flex:0 0 26px;height:26px;border-radius:50%;background:var(--pri);color:#fff;font-weight:700;font-size:14px;display:flex;align-items:center;justify-content:center;margin-top:1px}
   .clearwrap{position:relative}.clearwrap input{padding-right:40px}
   .clearbtn{position:absolute;right:6px;top:50%;transform:translateY(-50%);width:28px;height:28px;border:0;border-radius:50%;background:#e6ebf2;color:var(--mut);font-size:18px;line-height:1;cursor:pointer;display:none}
   .clearbtn:hover{background:#d5dce6}
@@ -89,23 +92,26 @@
 <!-- 추천 (AI) -->
 <section class="tab" id="tab-ai">
   <div class="card">
-    <h3>가명화한 의무기록 → 상병 추천</h3>
-    <p class="mut" style="margin:0 0 6px">CC, PI, 진찰 소견, 검사 결과, 영상 판독, 추정진단을 붙여넣으세요. <b>이름·등록번호·생년월일·연락처는 빼고</b> 넣습니다. 전송 전에 숫자(6자리 이상)는 자동으로 가립니다.</p>
-    <div class="row" style="margin:0 0 6px"><select id="tplSel" style="width:auto;min-width:160px;padding:6px 8px;font-size:14px" onchange="selectTpl(this.value)"></select><button class="btn sec sm" onclick="insertTemplate()">템플릿 넣기</button><button class="btn sec sm" onclick="showTab('set');setTimeout(()=>document.getElementById('tplCard').scrollIntoView({behavior:'smooth'}),50)">템플릿 관리</button><span class="mut">본인 템플릿을 골라 넣고 채우세요. 처음 쓰는 분은 템플릿 관리에서 자기 템플릿을 추가하세요</span></div>
-    <textarea id="aiNote" style="min-height:260px;font-size:14px;line-height:1.5" placeholder="기본 템플릿 넣기를 누르거나, EMR 기록을 가명화해서 붙여넣으세요"></textarea>
-    <label>처방·검사·처치 (선택 — 병원 기준 점검에 사용)</label>
-    <input id="aiOrders" placeholder="예: Abd CT, Gaster inj, Macperan, suture 3cm">
-    <div class="row">
-      <button class="btn" id="aiBtn" onclick="runAI()">상병 추천</button>
-      <button class="btn sec" onclick="clearAI()">지움</button>
-      <span class="mut" id="aiHint"></span>
-    </div>
+    <div class="step"><span class="num">1</span><div style="flex:1"><b>새 환자 — 템플릿을 EMR에 붙여넣기</b>
+      <div class="row" style="margin:6px 0 0"><select id="tplSel" style="width:auto;min-width:150px;padding:6px 8px;font-size:14px" onchange="selectTpl(this.value)"></select><button class="btn sm" onclick="copyTemplate()">템플릿 복사</button><button class="btn sec sm" onclick="showTab('set');setTimeout(()=>document.getElementById('tplCard').scrollIntoView({behavior:'smooth'}),50)">템플릿 관리</button></div>
+      <div class="mut" style="margin-top:4px">복사한 템플릿을 EMR free text에 붙여넣고, 진료하면서 EMR에서 바로 기록하세요.</div></div></div>
+    <div class="step"><span class="num">2</span><div style="flex:1"><b>결과 정리 후 — EMR 기록 전체를 여기에 붙여넣기</b>
+      <div class="mut" style="margin:2px 0 6px">EMR free text에서 Ctrl+A → Ctrl+C, 여기서 Ctrl+V. <b>이름·등록번호·생년월일·연락처가 들어 있으면 지우고</b> 넣으세요 (6자리 이상 숫자는 자동으로 가림).</div>
+      <textarea id="aiNote" style="min-height:240px;font-size:14px;line-height:1.5" placeholder="EMR 기록을 붙여넣으세요"></textarea>
+      <details style="margin-top:6px"><summary>처방·처치를 따로 적기 (선택 — 기록에 없을 때만)</summary>
+        <input id="aiOrders" style="margin-top:6px" placeholder="예: Gaster inj, Macperan, suture 3cm"></details></div></div>
+    <div class="step"><span class="num">3</span><div style="flex:1"><b>상병 추천 → Imp) 문구 복사 → EMR Imp) 아래 붙여넣기</b>
+      <div class="row" style="margin:6px 0 0">
+        <button class="btn" id="aiBtn" onclick="runAI()">상병 추천</button><span class="mut">Ctrl+Enter</span>
+        <button class="btn sec" onclick="clearAI()" style="margin-left:auto">다음 환자 (비우기)</button>
+      </div>
+      <div class="mut" id="aiHint" style="margin-top:4px"></div></div></div>
   </div>
   <div id="aiOut"></div>
 </section>
 
 <!-- 검색 -->
-<section class="tab on" id="tab-search">
+<section class="tab" id="tab-search">
   <div class="card">
     <h3>상병코드 검색</h3>
     <div class="clearwrap"><input id="srchIn" placeholder="추정진단명·약어·한글·코드 (예: AGE, 발목 염좌, K29, cellulitis)" oninput="runSearch()" autocomplete="off"><button class="clearbtn" id="srchClr" title="지우기" onclick="clearSearch()">×</button></div>
@@ -313,19 +319,21 @@
     <p class="mut">모든 결과는 참고용입니다. 최종 상병은 진료한 의사가 확정합니다.</p>
   </div>
   <div class="card">
-    <h3>가장 흔한 사용 흐름</h3>
+    <h3>응급실 진료 흐름에 맞춘 사용법</h3>
     <ol style="margin:0;padding-left:20px;line-height:1.7">
-      <li><b>검색</b> 탭에서 추정진단명이나 약어를 쳐서 코드를 찾는다 → 코드를 클릭하면 복사됨</li>
-      <li>어떤 상병이 맞을지 애매하면 <b>추천</b> 탭에 가명화한 기록을 붙여넣고 AI 추천을 받는다</li>
-      <li>처방·검사가 많은 환자는 <b>점검</b> 탭에서 빠진 상병이 없는지 확인한다</li>
-      <li>심사팀이 수정을 요청하면 <b>요청기록</b>에 적어 둔다 → 반복되면 <b>규칙</b>으로 만든다</li>
+      <li><b>새 환자</b>: 추천 탭에서 본인 템플릿을 고르고 <b>템플릿 복사</b> → EMR free text에 붙여넣기 (메모장에 매번 다시 칠 필요 없음)</li>
+      <li><b>진료·검사</b>: 평소처럼 EMR에 문진·진찰·검사 결과를 기록</li>
+      <li><b>상병 정할 때</b>: EMR 기록 전체를 복사해 추천 탭에 붙여넣고 <b>상병 추천</b> (Ctrl+Enter)</li>
+      <li><b>Imp) 문구 복사</b> → EMR의 Imp) 아래에 붙여넣기. 끝나면 <b>다음 환자</b>로 비우기</li>
+      <li>코드 하나만 빨리 찾을 때는 <b>검색</b> 탭, 처방과 상병 조합만 확인할 때는 <b>점검</b> 탭</li>
+      <li>심사팀이 수정을 요청하면 <b>요청기록</b>에 적어 두고, 반복되면 <b>규칙</b>으로 만들기</li>
     </ol>
   </div>
   <div class="card">
     <h3>탭별 설명</h3>
     <h4 style="margin:14px 0 4px;color:var(--pri);font-size:14px">진료</h4>
+    <div class="rule"><b>추천</b> — ① 템플릿 복사 → EMR에 붙여넣기 ② 기록을 마친 뒤 EMR 기록 전체를 붙여넣기 ③ 상병 추천(Ctrl+Enter). AI가 주진단·부진단·R/O 상병을 이유와 함께 제시하고, 코드표와 병원 규칙으로 검증해 문제가 있으면 한 번 자동 보정합니다. 결과 맨 위의 <b>Imp) 문구 복사</b>로 EMR Imp) 아래에 붙여넣습니다. 전송 전 6자리 이상 숫자·전화·주민번호는 자동으로 가립니다. 템플릿은 "템플릿 관리"에서 과장별로 추가·수정합니다.</div>
     <div class="rule"><b>검색</b> — 추정진단명, 응급실 약어(AGE, LBP, ICH…), 한글, 영문, 코드 앞자리 어느 것으로든 찾습니다. 코드 클릭 = 복사. 빨간 표시는 사용불가·불완전코드(청구 거절), 노란 표시는 주상병 지양. "메모"로 "심사팀 선호" 같은 병원 고유 정보를 남길 수 있습니다. 검색창이 비어 있으면 최근 복사한 코드가 보입니다.</div>
-    <div class="rule"><b>추천</b> — 위쪽 목록에서 본인 템플릿을 고르고 "템플릿 넣기"로 불러와 채우거나(템플릿은 설정 탭 "기록 템플릿"에서 과장별로 추가·수정), 가명화한 의무기록(CC, PI, 진찰, 검사, 영상, 추정진단)과 처방·검사를 넣으면 AI가 주진단·부진단·r/o 상병을 이유와 함께 제시합니다. 전송 전 6자리 이상 숫자·전화번호·주민번호는 자동으로 가려지며, 실제 전송 내용을 펼쳐 볼 수 있습니다. 결과는 코드표와 병원 규칙으로 다시 검증됩니다. "Imp) 문구 복사"를 누르면 의무기록실 요청 형식(예: (주) 상세불명의 위염 / (부) …)으로 복사되어 EMR의 Imp)란에 바로 붙여넣을 수 있습니다. 진단명은 심평원 공식 명칭으로 맞춰지므로 상병과 진단명이 일치합니다. <span class="mut">설정 탭에 API 키가 있어야 동작합니다.</span></div>
     <div class="rule"><b>점검</b> — 약·검사·처치와 입력한 상병코드를 적으면 병원 규칙에 비춰 빠진 상병(예: Gaster → K219 없음), 쓰면 안 되는 코드(예: R53), 기록 보완(예: suture 시 cm 기재)을 알려 줍니다. AI 없이 즉시 동작합니다.</div>
     <h4 style="margin:14px 0 4px;color:var(--pri);font-size:14px">심사 관리</h4>
     <div class="rule"><b>요청기록</b> — 심사팀이 상병 수정을 요청할 때마다 상황·원래 코드·요청 코드·사유를 적습니다. 환자 식별정보는 적지 마세요. "규칙화"를 누르면 규칙 입력 칸에 자동으로 채워집니다.</div>
@@ -641,6 +649,7 @@ function saveTpl(){const name=document.getElementById('tplName').value.trim(),te
   if(id){const t=DB.templates.find(x=>x.id===id);if(t){t.name=name;t.text=text;t.legend=legend}}else{const t={id:uid(),name,text,legend};DB.templates.push(t);DB.settings.tplId=t.id}
   save();resetTplForm();renderTplSel();toast('템플릿 저장됨')}
 function delTpl(id){if(DB.templates.length<=1){toast('템플릿이 하나는 있어야 합니다');return}const t=DB.templates.find(x=>x.id===id);if(!confirm(`"${t.name}" 템플릿을 삭제할까요?`))return;DB.templates=DB.templates.filter(x=>x.id!==id);if(DB.settings.tplId===id)DB.settings.tplId=DB.templates[0].id;save();renderTplSel()}
+function copyTemplate(){copyText(curTpl().text);toast('템플릿 복사됨 — EMR에 붙여넣으세요')}
 function insertTemplate(){const ta=document.getElementById('aiNote');if(ta.value.trim()&&!confirm('현재 내용을 지우고 템플릿을 넣을까요?'))return;ta.value=curTpl().text;ta.focus();ta.setSelectionRange(3,3)}
 function clearAI(){document.getElementById('aiNote').value='';document.getElementById('aiOrders').value='';document.getElementById('aiOut').innerHTML=''}
 async function runAI(){
@@ -664,6 +673,7 @@ async function runAI(){
       try{const t2=await callClaude(sys,user+'\n\n[이전 추천]\n'+JSON.stringify(j)+'\n\n[보정 요청]\n'+fb,4000);const j2=parseJSON(t2);if(j2&&j2.main){j=j2;fixed=issues}}catch(e){}
     }
     renderAI(j,ordersAll+'\n'+masked,fixed);
+    setTimeout(()=>{const c=document.querySelector('#aiOut .card:nth-of-type(2), #aiOut .alert.info');(document.getElementById('impBox')||c||out).scrollIntoView({behavior:'smooth',block:'start'})},50);
   }catch(e){out.innerHTML+=`<div class="alert bad"><div class="t">호출 실패</div>${esc(e.message||e)}<div class="mut">병원 네트워크에서 접속이 막혀 있거나 비밀번호·키가 잘못되었을 수 있습니다. 설정 탭의 연결 테스트로 확인하세요.</div></div>`}
   finally{btn.disabled=false;btn.textContent='상병 추천'}
 }
@@ -719,7 +729,7 @@ function renderAI(j,orders,fixed){
   const q=t=>JSON.stringify(t).replace(/"/g,'&quot;');
   let h=fixed&&fixed.length?`<div class="alert info"><div class="t">첫 추천을 자동 보정했습니다</div><ul style="margin:4px 0 0 18px;padding:0">${fixed.map(x=>'<li>'+esc(x.split(':')[0].slice(0,80))+'</li>').join('')}</ul></div>`:'';
   h+=`<div class="card"><div class="row" style="margin:0 0 8px"><h3 style="margin:0;flex:1">추천 상병</h3><button class="btn sm" onclick="copyText(${q(impText)})" title="EMR Imp)란에 붙여넣을 진단명 문구">Imp) 문구 복사</button><button class="btn sec sm" onclick="copyText(${q(summary)})">코드 포함 복사</button></div>
-   <pre class="ref" style="margin:0 0 8px">${esc(impText)}</pre>`;
+   <pre class="ref" id="impBox" style="margin:0 0 8px;font-size:15px">${esc(impText)}</pre>`;
   h+=dxCard('주진단',j.main);
   (j.sub||[]).forEach(s=>h+=dxCard('부진단',s));
   (j.ro||[]).forEach(s=>h+=dxCard('r/o',s));
@@ -823,7 +833,7 @@ function resetSeed(){if(!confirm('규칙을 기본 규칙으로 되돌립니다.
 /* ---------- 탭 ---------- */
 function showTab(t){renderNav(t);document.querySelectorAll('.tab').forEach(s=>s.classList.toggle('on',s.id==='tab-'+t));
   if(t==='stats')renderStats();if(t==='rules')renderRules();if(t==='log')renderLogs();if(t==='search')runSearch();if(t==='set'){loadSettingsUI();renderTplSel()}}
-const GROUPS={care:[['search','검색'],['ai','추천'],['check','점검']],review:[['log','요청기록'],['rules','규칙'],['stats','분석']],info:[['ref','기준'],['set','설정'],['help','도움말']]};
+const GROUPS={care:[['ai','추천'],['search','검색'],['check','점검']],review:[['log','요청기록'],['rules','규칙'],['stats','분석']],info:[['ref','기준'],['set','설정'],['help','도움말']]};
 function groupOf(t){for(const g in GROUPS)if(GROUPS[g].some(x=>x[0]===t))return g;return 'care'}
 function renderNav(t){const g=groupOf(t);document.querySelectorAll('#navTop button').forEach(b=>b.classList.toggle('on',b.dataset.g===g));
   document.getElementById('navSub').innerHTML=GROUPS[g].map(([id,nm])=>`<button data-t="${id}" class="${id===t?'on':''}" onclick="showTab('${id}')">${nm}</button>`).join('')}
@@ -831,7 +841,8 @@ document.querySelectorAll('#navTop button').forEach(b=>b.onclick=()=>showTab(GRO
 function renderAll(){renderRules();renderLogs();renderStats();updAiHint()}
 load();migrateLegend();renderTplSel();setKcd(KCD_BUILTIN,'내장 임시 코드표');loadKcdJson();renderAll();loadSettingsUI();
 document.getElementById('lgDate').value=new Date().toISOString().slice(0,10);
-showTab('search');try{if(!localStorage.getItem('dscode_seen')){localStorage.setItem('dscode_seen','1');showTab('help')}}catch(e){}
+showTab('ai');try{if(!localStorage.getItem('dscode_seen')){localStorage.setItem('dscode_seen','1');showTab('help')}}catch(e){}
+document.getElementById('aiNote').addEventListener('keydown',e=>{if(e.key==='Enter'&&(e.ctrlKey||e.metaKey)){e.preventDefault();runAI()}});
 document.getElementById('srchIn').addEventListener('keydown',e=>{if(e.key==='Enter')runSearch();if(e.key==='Escape')clearSearch()});
 </script>
 </body>
