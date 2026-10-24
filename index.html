@@ -240,9 +240,21 @@
 <!-- 설정 -->
 <section class="tab" id="tab-set">
   <div class="card">
-    <h3>AI 연결 (Claude API)</h3>
-    <p class="mut">API 키는 이 브라우저에만 저장되고 Anthropic API 호출에만 쓰입니다. 병원 PC에서 api.anthropic.com 접속이 막혀 있으면 아래 연결 테스트가 실패합니다.</p>
-    <label>API 키</label><input type="password" id="setKey" placeholder="sk-ant-...">
+    <h3>AI 연결</h3>
+    <label>연결 방식</label>
+    <select id="setMode" onchange="modeUI()">
+      <option value="proxy">중계 서버 + 응급실 비밀번호 (권장)</option>
+      <option value="key">API 키 직접 입력</option>
+    </select>
+    <div id="modeProxy">
+      <p class="mut" style="margin:6px 0 0">API 키는 중계 서버에만 보관되고, 이 PC에는 비밀번호만 저장됩니다.</p>
+      <label>중계 서버 주소</label><input id="setProxy" placeholder="https://dscode-proxy.○○○.workers.dev">
+      <label>응급실 비밀번호</label><input type="password" id="setPass" placeholder="관리자에게 받은 비밀번호">
+    </div>
+    <div id="modeKey" style="display:none">
+      <p class="mut" style="margin:6px 0 0">API 키가 이 브라우저에 저장됩니다. 개인 PC에서만 쓰세요.</p>
+      <label>API 키</label><input type="password" id="setKey" placeholder="sk-ant-...">
+    </div>
     <label>모델</label>
     <select id="setModel">
       <option value="claude-sonnet-5-5">claude-sonnet-5-5 (권장)</option>
@@ -380,11 +392,12 @@ const SEED_RULES=[
 
 /* ---------- 저장소 ---------- */
 const KEY='dscode_v2';
-let DB={rules:[],logs:[],codeNotes:{},recent:[],settings:{key:'',model:'claude-sonnet-5-5'}};
+const DEFAULT_PROXY='';
+let DB={rules:[],logs:[],codeNotes:{},recent:[],settings:{key:'',model:'claude-sonnet-5-5',mode:'proxy',proxy:'',pass:''}};
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6)}
 function load(){
   let loaded=false;
-  try{const s=localStorage.getItem(KEY);if(s){const d=JSON.parse(s);DB={...DB,...d};DB.settings={...{key:'',model:'claude-sonnet-5-5'},...(d.settings||{})};loaded=true}}catch(e){}
+  try{const s=localStorage.getItem(KEY);if(s){const d=JSON.parse(s);DB={...DB,...d};DB.settings={...{key:'',model:'claude-sonnet-5-5',mode:(d.settings&&d.settings.key&&!d.settings.mode)?'key':'proxy',proxy:'',pass:''},...(d.settings||{})};loaded=true}}catch(e){}
   if(!loaded){try{const old=localStorage.getItem('dscode_v1');if(old){const d=JSON.parse(old);DB.rules=d.rules||[];DB.logs=d.logs||[]}}catch(e){}}
   const seedTitles=new Set(SEED_RULES.map(r=>r.title));
   if(!DB.rules.length||DB.rules.every(r=>r.src==='seed')){DB.rules=SEED_RULES.map(r=>({...r,id:uid(),src:'seed'}))}
@@ -633,7 +646,7 @@ function clearAI(){document.getElementById('aiNote').value='';document.getElemen
 async function runAI(){
   const note=document.getElementById('aiNote').value.trim();const orders=document.getElementById('aiOrders').value.trim();const out=document.getElementById('aiOut');
   if(!note){toast('의무기록을 입력하세요');return}
-  if(!DB.settings.key){out.innerHTML='<div class="alert warn"><div class="t">API 키가 없습니다</div>설정 탭에서 Claude API 키를 저장하세요.</div>';return}
+  if(!aiReady()){out.innerHTML='<div class="alert warn"><div class="t">AI 연결 설정이 필요합니다</div>참고·설정 → 설정에서 응급실 비밀번호(또는 API 키)를 저장하세요.</div>';return}
   const ordersAll=orders;
   const masked=maskPHI(note);
   const btn=document.getElementById('aiBtn');btn.disabled=true;btn.innerHTML='<span class="spin"></span>추천 중…';
@@ -651,7 +664,7 @@ async function runAI(){
       try{const t2=await callClaude(sys,user+'\n\n[이전 추천]\n'+JSON.stringify(j)+'\n\n[보정 요청]\n'+fb,4000);const j2=parseJSON(t2);if(j2&&j2.main){j=j2;fixed=issues}}catch(e){}
     }
     renderAI(j,ordersAll+'\n'+masked,fixed);
-  }catch(e){out.innerHTML+=`<div class="alert bad"><div class="t">호출 실패</div>${esc(e.message||e)}<div class="mut">병원 네트워크에서 api.anthropic.com 접속이 막혀 있거나 키가 잘못되었을 수 있습니다. 설정 탭의 연결 테스트로 확인하세요.</div></div>`}
+  }catch(e){out.innerHTML+=`<div class="alert bad"><div class="t">호출 실패</div>${esc(e.message||e)}<div class="mut">병원 네트워크에서 접속이 막혀 있거나 비밀번호·키가 잘못되었을 수 있습니다. 설정 탭의 연결 테스트로 확인하세요.</div></div>`}
   finally{btn.disabled=false;btn.textContent='상병 추천'}
 }
 function parseJSON(t){
@@ -718,10 +731,14 @@ function renderAI(j,orders,fixed){
   h+=`<div class="mut" style="margin:4px 2px">추천은 참고용입니다. 최종 상병은 의사가 진료 내용에 맞게 확정하세요.</div>`;
   out.innerHTML+=h;
 }
+function proxyUrl(){return (DB.settings.proxy||DEFAULT_PROXY||'').trim().replace(/\/+$/,'')}
+function aiReady(){const S=DB.settings;return S.mode==='key'?!!S.key:!!(proxyUrl()&&S.pass)}
 async function callClaude(system,user,maxTokens){
   const model=DB.settings.model||'claude-sonnet-5-5';
-  const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'content-type':'application/json','x-api-key':DB.settings.key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
-    body:JSON.stringify({model,max_tokens:maxTokens||1000,system,messages:[{role:'user',content:user}]})});
+  const S=DB.settings;const body=JSON.stringify({model,max_tokens:maxTokens||1000,system,messages:[{role:'user',content:user}]});
+  const r=S.mode==='key'
+    ?await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'content-type':'application/json','x-api-key':S.key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body})
+    :await fetch(proxyUrl(),{method:'POST',headers:{'content-type':'application/json','x-access-pass':S.pass||''},body});
   if(!r.ok){let m='HTTP '+r.status;try{const e=await r.json();m+=' '+(e.error&&e.error.message||'')}catch(x){}throw new Error(m)}
   const d=await r.json();const t=(d.content||[]).filter(c=>c.type==='text').map(c=>c.text).join('');callClaude.last=d.stop_reason;return t;
 }
@@ -729,12 +746,13 @@ async function callClaude(system,user,maxTokens){
 /* ---------- 설정 ---------- */
 function migrateLegend(){const L=DB.settings.legend;if(L&&(L.includes('"->" 아래는 처치')||L.includes('A/N/V/D/R')||!L.includes('DA = days ago'))){DB.settings.legend='';save()}
   ensureTpls();const d=DB.templates.find(t=>t.id==='default');if(d){if(d.name==='기본 템플릿')d.name='선경민 과장';if(!d.text.includes('Initial V/S')&&d.text.includes('A/N/V/D/'))d.text=NOTE_TEMPLATE;if(d.legend&&(d.legend.includes('A/N/V/D/R')||!d.legend.includes('DA = days ago')))d.legend=LEGEND_DEFAULT;save()}}
-function loadSettingsUI(){const s=DB.settings;document.getElementById('setKey').value=s.key||'';const sel=document.getElementById('setModel');const std=[...sel.options].map(o=>o.value);
+function loadSettingsUI(){const s=DB.settings;document.getElementById('setKey').value=s.key||'';document.getElementById('setMode').value=s.mode||'proxy';document.getElementById('setProxy').value=s.proxy||DEFAULT_PROXY;document.getElementById('setPass').value=s.pass||'';modeUI();const sel=document.getElementById('setModel');const std=[...sel.options].map(o=>o.value);
   if(std.includes(s.model)){sel.value=s.model}else{sel.value='custom';document.getElementById('setModelCustom').value=s.model||'';document.getElementById('setModelCustom').style.display='block'}}
 document.getElementById('setModel').onchange=e=>{document.getElementById('setModelCustom').style.display=e.target.value==='custom'?'block':'none'};
-function saveSettings(){const sel=document.getElementById('setModel').value;DB.settings.key=document.getElementById('setKey').value.trim();DB.settings.model=sel==='custom'?document.getElementById('setModelCustom').value.trim():sel;save();toast('저장됨');updAiHint()}
+function modeUI(){const m=document.getElementById('setMode').value;document.getElementById('modeProxy').style.display=m==='proxy'?'':'none';document.getElementById('modeKey').style.display=m==='key'?'':'none'}
+function saveSettings(){const sel=document.getElementById('setModel').value;DB.settings.mode=document.getElementById('setMode').value;DB.settings.proxy=document.getElementById('setProxy').value.trim();DB.settings.pass=document.getElementById('setPass').value;DB.settings.key=document.getElementById('setKey').value.trim();DB.settings.model=sel==='custom'?document.getElementById('setModelCustom').value.trim():sel;save();toast('저장됨');updAiHint()}
 async function testAPI(){saveSettings();const st=document.getElementById('setStat');st.textContent='테스트 중…';try{const t=await callClaude('한 단어로만 답하세요.','연결 확인. "OK"라고만 답하세요.',10);st.textContent='연결 성공: '+t.trim().slice(0,20)}catch(e){st.textContent='실패: '+(e.message||e)}}
-function updAiHint(){document.getElementById('aiHint').textContent=DB.settings.key?('모델: '+DB.settings.model):'설정 탭에서 API 키를 먼저 저장하세요 (도움말 참고)'}
+function updAiHint(){document.getElementById('aiHint').textContent=aiReady()?('모델: '+DB.settings.model+(DB.settings.mode==='key'?' · API 키':' · 중계 서버')):'참고·설정 → 설정에서 응급실 비밀번호를 먼저 저장하세요'}
 
 /* ---------- 요청 기록 ---------- */
 function addLog(){
@@ -798,8 +816,8 @@ function renderStats(){
 }
 
 /* ---------- 데이터 ---------- */
-function exportData(){const d={...DB,settings:{...DB.settings,key:''}};document.getElementById('dataBox').value=JSON.stringify(d,null,1);toast('내보내기 완료 (API 키 제외)')}
-function importData(){try{const d=JSON.parse(document.getElementById('dataBox').value);if(!d.rules)throw 0;if(!confirm('현재 규칙·기록을 가져온 내용으로 바꿀까요?'))return;const key=DB.settings.key;DB={...DB,...d};DB.settings.key=key||(d.settings&&d.settings.key)||'';save();renderAll();toast('가져오기 완료')}catch(e){toast('형식이 올바르지 않습니다')}}
+function exportData(){const d={...DB,settings:{...DB.settings,key:'',pass:''}};document.getElementById('dataBox').value=JSON.stringify(d,null,1);toast('내보내기 완료 (API 키·비밀번호 제외)')}
+function importData(){try{const d=JSON.parse(document.getElementById('dataBox').value);if(!d.rules)throw 0;if(!confirm('현재 규칙·기록을 가져온 내용으로 바꿀까요?'))return;const keep=DB.settings;DB={...DB,...d};DB.settings={...keep,...(d.settings||{}),key:keep.key,pass:keep.pass,proxy:keep.proxy||(d.settings&&d.settings.proxy)||'',mode:keep.mode};save();renderAll();toast('가져오기 완료')}catch(e){toast('형식이 올바르지 않습니다')}}
 function resetSeed(){if(!confirm('규칙을 기본 규칙으로 되돌립니다. 직접 만든 규칙은 지워지고 요청기록은 유지됩니다. 계속할까요?'))return;DB.rules=SEED_RULES.map(r=>({...r,id:uid(),src:'seed'}));save();renderAll();toast('초기화 완료')}
 
 /* ---------- 탭 ---------- */
