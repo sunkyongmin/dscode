@@ -540,7 +540,7 @@ function buildSystem(){
 
 이 응급실의 기록 형식과 약어:
 ${DB.settings.legend||LEGEND_DEFAULT}
-비어 있는 항목(예: PI) 뒤에 내용 없음)은 기재되지 않은 것이므로 추정하지 않습니다. Imp) 아래 "->" 앞까지의 lab/ECG(EKG)/X-ray/CT 등은 검사 결과입니다(wnl = within normal limits, NSR = normal sinus rhythm). ROS/PEx에 (-)로 표시된 소견은 음성입니다.
+비어 있는 항목(예: PI) 뒤에 내용 없음)은 기재되지 않은 것이므로 추정하지 않습니다. Imp) 아래 "->" 앞까지의 Initial V/S(내원 시 활력징후), EKG, X-ray, Lab, CT 등은 검사 결과입니다. 값이 비어 있는 항목은 시행하지 않았거나 기재하지 않은 것입니다(wnl = within normal limits, NSR = normal sinus rhythm). ROS/PEx에 (-)로 표시된 소견은 음성입니다.
 
 동신병원 의무기록실·보험심사 규칙:
 ${rulesForPrompt()}
@@ -584,6 +584,11 @@ abd T/RT(-/-)
 CVAT(-/-)
 
 Imp)
+
+Initial V/S: 
+EKG: 
+X-ray: 
+Lab: 
 
 ->
 `;
