@@ -96,7 +96,7 @@
       <div class="row" style="margin:6px 0 0"><select id="tplSel" style="width:auto;min-width:150px;padding:6px 8px;font-size:14px" onchange="selectTpl(this.value)"></select><button class="btn sm" onclick="copyTemplate()">템플릿 복사</button><button class="btn sec sm" onclick="showTab('set');setTimeout(()=>document.getElementById('tplCard').scrollIntoView({behavior:'smooth'}),50)">템플릿 관리</button></div>
       <div class="mut" style="margin-top:4px">복사한 템플릿을 EMR free text에 붙여넣고, 진료하면서 EMR에서 바로 기록하세요.</div></div></div>
     <div class="step"><span class="num">2</span><div style="flex:1"><b>결과 정리 후 — EMR 기록 전체를 여기에 붙여넣기</b>
-      <div class="mut" style="margin:2px 0 6px">EMR free text에서 Ctrl+A → Ctrl+C, 여기서 Ctrl+V. <b>이름·등록번호·생년월일·연락처가 들어 있으면 지우고</b> 넣으세요 (6자리 이상 숫자는 자동으로 가림).</div>
+      <div class="mut" style="margin:2px 0 6px">EMR free text에서 Ctrl+A → Ctrl+C, 여기서 Ctrl+V. <span style="opacity:.8">(기록 안에 보호자 연락처 등을 직접 적었다면 지우고 넣으세요. 긴 숫자·전화번호는 자동으로 가립니다.)</span></div>
       <textarea id="aiNote" style="min-height:240px;font-size:14px;line-height:1.5" placeholder="EMR 기록을 붙여넣으세요"></textarea>
       <details style="margin-top:6px"><summary>처방·처치를 따로 적기 (선택 — 기록에 없을 때만)</summary>
         <input id="aiOrders" style="margin-top:6px" placeholder="예: Gaster inj, Macperan, suture 3cm"></details></div></div>
