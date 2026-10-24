@@ -392,7 +392,7 @@ const SEED_RULES=[
 
 /* ---------- 저장소 ---------- */
 const KEY='dscode_v2';
-const DEFAULT_PROXY='';
+const DEFAULT_PROXY='https://dscode-proxy.sunkyongmin.workers.dev';
 let DB={rules:[],logs:[],codeNotes:{},recent:[],settings:{key:'',model:'claude-sonnet-5-5',mode:'proxy',proxy:'',pass:''}};
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6)}
 function load(){
