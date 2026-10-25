@@ -614,7 +614,7 @@ function fluCheck(text){ // 인플루엔자·코로나 신속검사 급여 요�
   const temps=[];let m;
   const re1=/(?:\bBT|체온|\bTemp|\bT)\s*[:=]?\s*(3[4-9](?:\.\d)?|4[0-2](?:\.\d)?)/gi;while((m=re1.exec(t)))temps.push(+m[1]);
   const re2=/\d{2,3}\s*\/\s*\d{2,3}\s*-\s*\d{2,3}\s*-\s*\d{1,2}\s*-\s*(3[4-9](?:\.\d)?|4[0-2](?:\.\d)?)/g;while((m=re2.exec(t)))temps.push(+m[1]);
-  const re4=/V\s*\/\s*S\s*:?\s*\d{2,3}\s*\/\s*\d{2,3}\s+(3[4-9](?:\.\d)?|4[0-2](?:\.\d)?)(?=\s)/gi;while((m=re4.exec(t)))temps.push(+m[1]);
+  const re4=/V\s*\/\s*S\s*:?\s*\d{2,3}\s*\/\s*\d{2,3}\s+(3[4-9](?:\.\d)?|4[0-2](?:\.\d)?)(?=\s|$)/gi;while((m=re4.exec(t)))temps.push(+m[1]);
   const re3=/(3[7-9]\.\d|4[0-2]\.\d)\s*(?:℃|도|°c?)/gi;while((m=re3.exec(t)))temps.push(+m[1]);
   const feverWord=/fever\s*(\+|\(\+\))|발열\s*(\+|\(\+\)|있)/i.test(t);
   const fever=temps.some(v=>v>=37.5);
@@ -773,7 +773,7 @@ Imp)
 ->
 `;
 const LEGEND_DEFAULT=`기록 형식: CC) 주호소, onset) 발병시각(예: 1DA 21:00 = 1일 전 21시, DA = days ago), PMHx) 과거력, DM/HTN/DL 당뇨/고혈압/이상지질혈증, OP 수술력, PI) 현병력, ROS) 계통문진, PEx) 신체진찰, PEx) 다음에 검사 결과(Initial V/S, EKG, X-ray, Lab, CT 등), 그다음 Imp) 추정진단(상병), "->" 다음은 최종 코멘트(결과 설명, 투약, 퇴실·외래·입원 계획)
-활력징후: V/S는 혈압 체온 맥박 호흡 산소포화도 순(예: "V/S: 133/74 38 98 20 98" = BP 133/74, BT 38℃, PR 98, RR 20, SpO2 98%)
+활력징후: V/S는 혈압 체온 맥박 호흡 산소포화도 순(예: "V/S: 133/74 38 98 20 98" = BP 133/74, BT 38℃, PR 98, RR 20, SpO2 98%). 경증 환자는 산소포화도를 재지 않아 마지막 값이 비어 있을 수 있음(측정 안 함이지 이상 아님)
 약어: C/S/R = cough/sputum/rhinorrhea, A/N/V/D/C = anorexia/nausea/vomiting/diarrhea/constipation, PI- s exudate = pharyngeal injection 없음·삼출물 없음, RHB s murmur = regular heart beat without murmur, CBS = clear breath sound, abd T/RT = abdominal tenderness/rebound tenderness, CVAT = costovertebral angle tenderness, s = without, c = with, (-) 음성, (+) 양성`;
 const GENERIC_LEGEND='응급실 의무기록입니다. 일반적인 응급의학 약어(CC, PI, PMHx, ROS, PEx, Imp, s = without, c = with, (-) 음성, (+) 양성, wnl 등)를 사용합니다.';
 function resultsBeforeImp(t){ // 기존 템플릿: Imp) → 검사결과 → -> 순서를 검사결과 → Imp) → -> 로
@@ -1015,7 +1015,8 @@ async function callClaude(system,user,maxTokens){
 
 /* ---------- 설정 ---------- */
 function migrateLegend(){const L=DB.settings.legend;if(L&&(L.includes('"->" 아래는 처치')||L.includes('A/N/V/D/R')||!L.includes('DA = days ago'))){DB.settings.legend='';save()}
-  ensureTpls();const d=DB.templates.find(t=>t.id==='default');if(d){if(d.name==='기본 템플릿')d.name='선경민 과장';if(!d.text.includes('Initial V/S')&&d.text.includes('A/N/V/D/'))d.text=NOTE_TEMPLATE;if(!d.soreThroat){if(/fever- chilling sense-\s*\n/.test(d.text))d.text=d.text.replace(/fever- chilling sense-[ \t]*\n/,'fever- chilling sense- sore throat-\n');if(d.legend&&!d.legend.includes('산소포화도'))d.legend=d.legend.replace('약어: C/S/R','활력징후: V/S는 혈압 체온 맥박 호흡 산소포화도 순(예: "V/S: 133/74 38 98 20 98" = BP 133/74, BT 38℃, PR 98, RR 20, SpO2 98%)\n약어: C/S/R');d.soreThroat=1}
+  ensureTpls();const d=DB.templates.find(t=>t.id==='default');if(d){if(d.name==='기본 템플릿')d.name='선경민 과장';if(!d.text.includes('Initial V/S')&&d.text.includes('A/N/V/D/'))d.text=NOTE_TEMPLATE;if(d.legend&&d.legend.includes('SpO2 98%)')&&!d.legend.includes('경증 환자는 산소포화도'))d.legend=d.legend.replace('SpO2 98%)','SpO2 98%). 경증 환자는 산소포화도를 재지 않아 마지막 값이 비어 있을 수 있음(측정 안 함이지 이상 아님)');
+    if(!d.soreThroat){if(/fever- chilling sense-\s*\n/.test(d.text))d.text=d.text.replace(/fever- chilling sense-[ \t]*\n/,'fever- chilling sense- sore throat-\n');if(d.legend&&!d.legend.includes('산소포화도'))d.legend=d.legend.replace('약어: C/S/R','활력징후: V/S는 혈압 체온 맥박 호흡 산소포화도 순(예: "V/S: 133/74 38 98 20 98" = BP 133/74, BT 38℃, PR 98, RR 20, SpO2 98%)\n약어: C/S/R');d.soreThroat=1}
     if(!d.resBeforeImp){d.text=resultsBeforeImp(d.text);if(d.legend)d.legend=d.legend.replace('Imp) 추정진단. Imp)와 "->" 사이에는 검사 결과(lab, ECG, X-ray, CT 등)를 적고, "->" 다음은','PEx) 다음에 검사 결과(Initial V/S, EKG, X-ray, Lab, CT 등), 그다음 Imp) 추정진단(상병), "->" 다음은');d.resBeforeImp=1}if(d.legend&&(d.legend.includes('A/N/V/D/R')||!d.legend.includes('DA = days ago')))d.legend=LEGEND_DEFAULT;save()}}
 function loadSettingsUI(){const s=DB.settings;document.getElementById('setKey').value=s.key||'';document.getElementById('setMode').value=s.mode||'proxy';document.getElementById('setProxy').value=s.proxy||DEFAULT_PROXY;document.getElementById('setPass').value=s.pass||'';modeUI();const sel=document.getElementById('setModel');const std=[...sel.options].map(o=>o.value);
   if(std.includes(s.model)){sel.value=s.model}else{sel.value='custom';document.getElementById('setModelCustom').value=s.model||'';document.getElementById('setModelCustom').style.display='block'}}
