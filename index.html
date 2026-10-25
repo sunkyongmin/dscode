@@ -1049,8 +1049,11 @@ function unknownDrugLines(orders){const ks=dictKeys();const seen=new Set();
     const toks=l.toUpperCase().split(/[\s/(),]+/);if(toks.some(t=>ks.has(t)))return false;
     const w=drugWord(l).toUpperCase();if(!w||w.length<3||ks.has(w)||seen.has(w))return false;seen.add(w);return true}).slice(0,5)}
 let drugCache={};
+let drugAvail=null; // 중계 서버에 식약처 키(MFDS_KEY)가 있는지 — 없으면 자동 조회를 건너뜀
+async function drugReady(){if(drugAvail!==null)return drugAvail;try{const r=await fetch(proxyUrl());const d=await r.json();drugAvail=!!(d&&d.drug)}catch(e){drugAvail=false}return drugAvail}
 async function lookupUnknownDrugs(orders){
   if(DB.settings.mode!=='proxy'||!aiReady())return [];
+  if(!(await drugReady()))return [];
   const lines=unknownDrugLines(orders).filter(l=>!(l in drugCache));
   if(lines.length){
     let qs=[];
