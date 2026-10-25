@@ -582,9 +582,15 @@ function codeChip(c,opt){const o=typeof c==='string'?parseCodes(c)[0]:c;const nm
 
 /* ---------- 규칙 엔진 ---------- */
 function analyze(text){const low=text.toLowerCase();const codes=[...new Set((text.match(/\b[A-Za-z]\d{2}(?:\.?\d{1,2})?\b/g)||[]).map(norm))];return {low,codes}}
+function textHit(low,kw){ // 키워드가 음성 표기(열상-, 열상(-), 열상 없음, no/s/without 열상)로만 나오면 불일치
+  let i=low.indexOf(kw);if(i<0)return false;
+  while(i>=0){const head=low.slice(Math.max(0,i-12),i),tail=low.slice(i+kw.length).split('\n')[0].slice(0,14);
+    const neg=/^\s*(-|\(\s*-\s*\)|:\s*(-|없|no\b|none))/.test(tail)||(/^[^+\n]{0,10}?(없음|없고|없이|없으며|없다|없어|\(-\)|negative|\bneg\b|\bnone\b)/.test(tail))||/(\bno|\bs|without|w\/o|denie[sd]?|\br\/o)\s*[:(]?\s*$/.test(head);
+    if(!neg)return true;i=low.indexOf(kw,i+kw.length)}
+  return false}
 function condMatch(cond,inp){return cond.split('|').some(alt=>{alt=alt.trim();if(!alt)return false;
     if(isCodeCond(alt)){const a=norm(alt);if(a.endsWith('*')){const p=a.slice(0,-1);return inp.codes.some(c=>c.startsWith(p))}return inp.codes.some(c=>c===a||c.startsWith(a)&&a.length>=3)}
-    return inp.low.includes(alt.toLowerCase())})}
+    return textHit(inp.low,alt.toLowerCase())})}
 function ruleHits(rule,inp){return (rule.when||[]).length>0&&rule.when.every(c=>condMatch(c,inp))}
 function evalRule(rule,inp){
   const addList=(rule.add||[]).map(a=>typeof a==='string'?parseCodes(a)[0]:a);
@@ -736,7 +742,7 @@ JSON 형식:
  "sub":[{"code":"","name":"","reason":""}],
  "ro":[{"code":"","name":"","reason":"어떤 검사 때문인지"}],
  "alternatives":[{"code":"","name":"","reason":"주진단 대안과 선택 기준"}],
- "warnings":["삭감 위험이나 규칙 관련 주의"],
+ "warnings":["이번 추천 상병과 이 기록에 실제로 해당하는 삭감 위험·규칙 주의만. 추천하지 않은 코드에 대한 일반 규칙 안내(예: T코드 쓰지 말 것)는 적지 않음. 없으면 빈 배열"],
  "documentation":["기록 보완 사항"]}`;
 }
 const NOTE_TEMPLATE=`CC)
