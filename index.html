@@ -755,14 +755,77 @@ JSON 형식:
  "warnings":["이번 추천 상병과 이 기록에 실제로 해당하는 삭감 위험·규칙 주의만. 추천하지 않은 코드에 대한 일반 규칙 안내(예: T코드 쓰지 말 것)는 적지 않음. 없으면 빈 배열"],
  "documentation":["기록 보완 사항"]}`;
 }
-const DRUG_DEFAULT=`Profa inj = acetaminophen(파라세타몰) 주사, 해열진통제 (항생제 아님)
+const DRUG_DEFAULT=`# 주사약
+Profa inj = acetaminophen(파라세타몰) 주사, 해열진통제 (항생제 아님)
 Gaster inj = famotidine, H2 차단제(위산 억제)
 Macperan inj = metoclopramide, 진토제
-Tridol inj = tramadol, 마약성 유사 진통제
+Tridol inj = tramadol, 진통제
 Buscopan inj = hyoscine butylbromide, 진경제
 Peniramin inj = chlorpheniramine, 항히스타민제
 Tarasyn inj = ketorolac, 비스테로이드 소염진통제
-Dexamethasone inj = dexamethasone, 스테로이드`;
+Dexamethasone inj = dexamethasone, 스테로이드
+# 수액
+Iso.Saline / Isotonic Sodium Chloride (NS5, NS10, NS1PP) = 0.9% 생리식염수
+Glucose & Sod Chloride 5% (5DS5, 5DS10) = 5% 포도당 생리식염수
+Hartmann Soln (HS5, HS10) = 하트만액(젖산 링거)
+Dex.And Hartm (HD5, HD10) = 5% 포도당 하트만액
+Sodium Chloride and Glucose 1:4 (1-4DS5) = 1/4 생리식염수 포도당액(소아용 수액)
+Sodium Chloride 0.45% (045S10) = 반생리식염수
+Daihan Dextrose 50% (50DW1) = 50% 포도당, 저혈당 교정
+Dextrose 5%·10% (5DW5, 5DW10, 10DW5, 10DW10) = 포도당 수액
+Mannitol 15% (15M10) = 만니톨, 삼투성 이뇨제(뇌압 강하)
+Glyfurol (GFL2) = 글리세린·과당, 삼투성 뇌압 강하제
+Sterile Saline 20ml (NSA), 대한생리식염주사액 20ml (AQU20) = 희석·혼합용 생리식염수
+Sod.Cl 40 Amp (NACLA) = 염화나트륨 40mEq 앰플, 전해질 보충(수액 혼합)
+SPORDER 40~240cc/hr = 수액 속도 지시(약 아님)
+# 항생제 주사
+Cefazedone (W-CZDV, W-CZDV2) = cefazedone, 1세대 세팔로스포린
+Ceftriaxone (W-CTRV, W-CTRV2) = ceftriaxone, 3세대 세팔로스포린
+Metrinal Infu 500mg (W-MDZV) = metronidazole 주사, 항생제(혐기균)
+Vancomycin (W-VCM50V, W-VCM10V) = vancomycin, 글리코펩타이드 항생제
+Pospenem (W-MRPV, W-MRP1V) = meropenem, 카바페넴 항생제
+Cefotetan (W-CFTV) = cefotetan, 2세대 세팔로스포린(세파마이신)
+린박탐주 4.5g (W-TZ4V) = piperacillin·tazobactam, 항생제
+Avelox inj 400mg (W-MFXI) = moxifloxacin, 퀴놀론계 항생제
+Bactacin inj 0.75g (W-UNV) = ampicillin·sulbactam, 페니실린계 항생제
+Maxipime 1g (W-CFP) = cefepime, 4세대 세팔로스포린(현재 미사용)
+Tazicef 1g (W-CAZV) = ceftazidime, 3세대 세팔로스포린
+Clamoxin inj 1.2g (W-AUGV) = amoxicillin·clavulanate 주사, 페니실린계 항생제
+Invanz 1g (W-ETPV) = ertapenem, 카바페넴 항생제
+# 경구약
+Buscopan Tab 10mg (HYB) = hyoscine butylbromide, 진경제(현재 미사용)
+Sparod Tab 100mg (TIP) = tiropramide, 진경제
+Macperan Tab 5mg (MCP) = metoclopramide, 진토제
+Restam Tab 100mg (RBMD) = rebamipide, 위점막 보호제
+Polybutine Tab 150mg (TBT) = trimebutine, 위장관 운동 조절제
+Alpram Tab 0.25mg (APZ025) = alprazolam, 항불안제
+Almagel Susp (AMGP) = almagate, 제산제
+Stavic Suspension (SMTP) = 위장약 현탁액 (성분 확인 필요)
+Tylenol 8 hours ER 650mg (AAPER), Acetaminophen Samnam 300mg (AAP300) = acetaminophen, 해열진통제
+Loperamide 2mg (LOP) = loperamide, 지사제
+M Tab Sinil 500mg (MGOH) = 산화마그네슘, 완하제·제산제
+Gastric Cap 75mg (RXTD) = roxatidine, H2 차단제
+Pamagen Tabs 20mg (FMTD) = famotidine, H2 차단제
+Aceclan C.Tab 100mg (ACF) = aceclofenac, 비스테로이드 소염진통제
+Alupen Tab 400mg (IPF40) = ibuprofen, 비스테로이드 소염진통제
+Tranophen Tab (TNP) = tramadol·acetaminophen 복합, 진통제
+Peniramin Tab 2mg (CPR) = chlorpheniramine, 항히스타민제
+Solondo Tab 5mg (H-LON) = prednisolone, 스테로이드
+Codenal Tab (MEPD) = 진해거담 복합제(기침약)
+Muteran Caps 200mg (ACE) = acetylcysteine, 거담제
+Bonaling-A Tab 50mg (DMD) = 어지럼·멀미약(항히스타민계)
+Tamiflu Cap 75mg (OSTM75) = oseltamivir, 인플루엔자 항바이러스제
+Fambir Tab 250mg (FAMC) = famciclovir, 대상포진 항바이러스제
+# 항생제 경구
+Qupron Tab 250mg (W-CF) = ciprofloxacin, 퀴놀론계 항생제
+Ceracin Caps 100mg (W-CFX) = cefixime, 3세대 세팔로스포린
+Flasinyl Cj Tab 250mg (W-MDZ) = metronidazole, 항생제(혐기균·원충)
+Cefaclor Ilhwa Cap 250mg (W-CFC) = cefaclor, 2세대 세팔로스포린
+Cefradine Cap 500mg (W-CRD) = cefradine, 1세대 세팔로스포린
+Axicla Tab 625mg (W-AUG) = amoxicillin·clavulanate, 페니실린계 항생제
+Amoxicillin Cap 500mg (W-AX50) = amoxicillin, 페니실린계 항생제
+# 퇴실 약 묶음처방 (묶음 이름 = 쓰는 상황)
+gastritis: Sparod + Pamagen / 진통소염제: Aceclan + Pamagen / 두드러기: Peniramin + Solondo + Restam / 기관지염: Restam + Codenal + Muteran + Peniramin / 독감: Tamiflu / 해열제: Tylenol ER + Alupen / 상처: Cefaclor + Restam / 어지럼증: Restam + Bonaling-A + Macperan / 요로감염: Pamagen + Ceracin / 대상포진: Fambir + Pamagen + Peniramin + Alupen / 타박상(CKD): Tranophen + Pamagen / 두통: Tranophen + Pamagen / 진통제: Alupen`;
 function curDrugs(){return (typeof DB.drugs==='string'?DB.drugs:DRUG_DEFAULT).trim()}
 function renderDrugs(){const b=document.getElementById('drugBox');if(b)b.value=curDrugs()}
 function saveDrugs(){DB.drugs=document.getElementById('drugBox').value;save();toast('약품 사전을 저장했습니다')}
