@@ -706,7 +706,7 @@ function buildSystem(){
 
 원칙:
 1. 코드는 KCD-8 형식으로 점(.) 없이 씁니다 (예: K297, S0600, I7439). 가능한 한 4자리 이상 세분류까지 씁니다.
-2. 주진단 1개, 부진단 0~5개, r/o(의심) 상병을 구분합니다. r/o 상병은 (가) 아래 병원 규칙이 r/o로 요구하는 검사(예: BNP → r/o I509, D-dimer → r/o I7439), (나) 기록에 의사가 그 질환을 의심했다고 쓴 경우(예: "r/o pancreatitis"), (다) 검사 결과가 그 질환을 시사하는 경우에만 넣습니다. 일상적인 혈액·소변 검사(CBC, 화학검사, amylase/lipase, LFT, 전해질, CRP, UA 등)를 했다는 이유만으로 r/o 상병을 만들지 않습니다(예: 복통에 amylase·lipase가 정상이면 r/o 췌장염 넣지 않음).
+2. 주진단 1개, 부진단 0~5개, r/o(의심) 상병을 구분합니다. r/o 상병은 (가) 아래 병원 규칙이 r/o로 요구하는 검사(예: BNP → r/o I509, D-dimer → r/o I7439), (나) 기록에 의사가 그 질환을 의심했다고 쓴 경우(예: "r/o pancreatitis"), (다) 검사 결과가 그 질환을 시사하는 경우에만 넣습니다. 일상적인 혈액·소변 검사(CBC, 화학검사, amylase/lipase, LFT, 전해질, CRP, UA 등)를 했다는 이유만으로 r/o 상병을 만들지 않습니다(예: 복통에 amylase·lipase가 정상이면 r/o 췌장염 넣지 않음). 영상검사도 같습니다: 복부 단순촬영(supine/erect)을 찍었다고 r/o 장폐색, chest PA를 찍었다고 r/o 폐렴을 넣지 않습니다. 식중독(A05)·감염성 장염 같은 감염 코드는 의사가 기록에 그 진단이나 의심을 적었을 때만 넣습니다. r/o 상병마다 reason에 근거(기록의 r/o 문구 또는 이상 소견·수치)를 적고, 근거가 '검사를 시행했다'뿐이면 넣지 않습니다. r/o는 보통 0~2개입니다.
 3. 기록에 근거가 없는 진단은 넣지 않습니다. 확진되지 않은 것은 "상세불명의" 또는 증상 코드나 r/o 상병으로 둡니다. 단, 아래 병원 규칙에서 지양하는 R코드는 대체 가능한 진단이 있으면 피합니다.
 4. 처방·검사·처치가 있으면 그 급여 인정에 필요한 상병이 빠지지 않게 합니다.
 5. 복통·구토·설사 등 위장관 증상으로 내원해 감염성 근거가 뚜렷하지 않으면, 이 병원은 A099 대신 K297(상세불명의 위염) 또는 K219(식도염을 동반하지 않은 위-식도역류병)를 주진단으로 씁니다. 하복부 압통처럼 국소 소견이 있으면 해당 부위 통증 코드(R1030 등)나 CT 적응증 r/o 상병을 부진단으로 더합니다.
@@ -963,6 +963,12 @@ function validateAI(j,ctx){const iss=[];
     const st=codeStatus(c);if(st&&st.sev==='bad'&&!f.includes('I'))iss.push(`${c}: 병원 규칙 위반 — ${st.title}`);
   });
   each([j.main],'주진단');each(j.sub,'부진단');each(j.ro,'r/o');
+  { // 근거가 '검사 시행'뿐인 r/o
+    const inp0=analyze(ctx||'');const req=new Set();for(const r of DB.rules){if(r.type==='order'&&ruleHits(r,inp0))(r.add||[]).forEach(a=>req.add(parseCodes(a)[0].code))}
+    (j.ro||[]).forEach(d=>{if(!d||!d.code)return;const c=norm(d.code),why=d.reason||'';if(req.has(c))return;
+      if(/시행|촬영|검사/.test(why)&&!/r\/o|의심|상승|증가|저하|이상\s*소견|양성|비정상|elevat|high|positive|abnormal|↑|소견\s*있|보임|확인됨/i.test(why))
+        iss.push(`r/o ${c}(${kname(c)||d.name||''})는 근거가 검사 시행뿐입니다. 기록에 의심 문구나 이상 결과가 없으면 빼세요.`)});
+  }
   const codes=[j.main,...(j.sub||[]),...(j.ro||[])].filter(x=>x&&x.code).map(x=>norm(x.code));
   const inp=analyze((ctx||'')+'\n'+codes.join(', '));
   for(const r of DB.rules){if(!ruleHits(r,inp))continue;const ev=evalRule(r,inp);
