@@ -764,7 +764,6 @@ abd T/RT(-/-)
 CVAT(-/-)
 
 Initial V/S: 
-EKG: 
 X-ray: 
 Lab: 
 
@@ -1032,6 +1031,7 @@ async function callClaude(system,user,maxTokens){
 /* ---------- 설정 ---------- */
 function migrateLegend(){const L=DB.settings.legend;if(L&&(L.includes('"->" 아래는 처치')||L.includes('A/N/V/D/R')||!L.includes('DA = days ago'))){DB.settings.legend='';save()}
   ensureTpls();const d=DB.templates.find(t=>t.id==='default');if(d){if(d.name==='기본 템플릿')d.name='선경민 과장';if(!d.text.includes('Initial V/S')&&d.text.includes('A/N/V/D/'))d.text=NOTE_TEMPLATE;if(d.legend&&d.legend.includes('SpO2 98%)')&&!d.legend.includes('경증 환자는 산소포화도'))d.legend=d.legend.replace('SpO2 98%)','SpO2 98%). 경증 환자는 산소포화도를 재지 않아 마지막 값이 비어 있을 수 있음(측정 안 함이지 이상 아님)');
+    if(!d.noEkg){d.text=d.text.replace(/\nEKG:[ \t]*(?=\n)/,'');d.noEkg=1}
     if(!d.soreThroat){if(/fever- chilling sense-\s*\n/.test(d.text))d.text=d.text.replace(/fever- chilling sense-[ \t]*\n/,'fever- chilling sense- sore throat-\n');if(d.legend&&!d.legend.includes('산소포화도'))d.legend=d.legend.replace('약어: C/S/R','활력징후: V/S는 혈압 체온 맥박 호흡 산소포화도 순(예: "V/S: 133/74 38 98 20 98" = BP 133/74, BT 38℃, PR 98, RR 20, SpO2 98%)\n약어: C/S/R');d.soreThroat=1}
     if(!d.resBeforeImp){d.text=resultsBeforeImp(d.text);if(d.legend)d.legend=d.legend.replace('Imp) 추정진단. Imp)와 "->" 사이에는 검사 결과(lab, ECG, X-ray, CT 등)를 적고, "->" 다음은','PEx) 다음에 검사 결과(Initial V/S, EKG, X-ray, Lab, CT 등), 그다음 Imp) 추정진단(상병), "->" 다음은');d.resBeforeImp=1}if(d.legend&&(d.legend.includes('A/N/V/D/R')||!d.legend.includes('DA = days ago')))d.legend=LEGEND_DEFAULT;save()}}
 function loadSettingsUI(){const s=DB.settings;document.getElementById('setKey').value=s.key||'';document.getElementById('setMode').value=s.mode||'proxy';document.getElementById('setProxy').value=s.proxy||DEFAULT_PROXY;document.getElementById('setPass').value=s.pass||'';modeUI();const sel=document.getElementById('setModel');const std=[...sel.options].map(o=>o.value);
