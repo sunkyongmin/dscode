@@ -928,7 +928,7 @@ function addImpLine(line){const ta=document.getElementById('aiNote');let b=impBl
   const cur=b.lines.slice(b.i+1,b.j);if(cur.includes(line)){toast('이미 들어 있습니다');flashNote();return}
   let arr=[...cur];if(line.startsWith('(주)'))arr=[line,...arr.filter(x=>!x.startsWith('(주)'))];else if(line.startsWith('(부)')){const k=arr.findIndex(x=>/^R\/O/i.test(x));k<0?arr.push(line):arr.splice(k,0,line)}else arr.push(line);
   ta.value=[...b.lines.slice(0,b.i+1),...arr,...b.lines.slice(b.j)].join('\n');toast('Imp)에 추가: '+line);flashNote()}
-function copyNote(){const v=document.getElementById('aiNote').value;if(!v.trim()){toast('입력창이 비어 있습니다');return}resLogFinal(v);copyText(v);toast('기록 전체 복사됨 — EMR에 붙여넣으세요')}
+function copyNote(){const ta0=document.getElementById('aiNote');ta0.value=tidyNote(ta0.value);const v=ta0.value;if(!v.trim()){toast('입력창이 비어 있습니다');return}resLogFinal(v);copyText(v);toast('기록 전체 복사됨 — EMR에 붙여넣으세요')}
 function copyFullNote(imp){
   const ta=document.getElementById('aiNote');const out=fillImp(ta.value,imp);
   if(out===null){copyText(imp);toast('기록에 Imp)가 없어 진단명만 복사했습니다');return}
@@ -1267,6 +1267,15 @@ function renderAll(){renderDrugs();renderRules();renderLogs();renderStats();updA
 load();migrateLegend();renderTplSel();setKcd(KCD_BUILTIN,'내장 임시 코드표');loadKcdJson();renderAll();loadSettingsUI();
 document.getElementById('lgDate').value=new Date().toISOString().slice(0,10);document.getElementById('gpDate').value=new Date().toISOString().slice(0,10);R();
 showTab('ai');try{if(!localStorage.getItem('dscode_seen')){localStorage.setItem('dscode_seen','1');showTab('help')}}catch(e){}
+function tidyNote(t){ // EMR에서 V/S를 붙여넣을 때 생기는 빈 V/S 줄·빈 줄 정리
+  let L=t.replace(/\r/g,'').split('\n');
+  const vsIdx=L.map((l,i)=>/^\s*v\/s\s*:/i.test(l)?i:-1).filter(i=>i>=0);
+  if(vsIdx.length>1){const filled=vsIdx.filter(i=>/\d/.test(L[i]));if(filled.length)L=L.filter((l,i)=>!(vsIdx.includes(i)&&!/\d/.test(l)))}
+  L=L.map(l=>/^\s*v\/s\s*:/i.test(l)?l.replace(/^\s+/,''):l);
+  const r=L.findIndex(l=>/^\s*results\)/i.test(l)),m=L.findIndex((l,i)=>i>r&&/^\s*imp\)/i.test(l));
+  if(r>=0&&m>r){const mid=L.slice(r+1,m).filter(l=>l.trim()!=='');L=[...L.slice(0,r+1),...mid,'',...L.slice(m)]}
+  return L.join('\n')}
+document.getElementById('aiNote').addEventListener('paste',()=>setTimeout(()=>{const ta=document.getElementById('aiNote');const v=tidyNote(ta.value);if(v!==ta.value){const p=ta.selectionStart;ta.value=v;ta.setSelectionRange(Math.min(p,v.length),Math.min(p,v.length))}},0));
 document.getElementById('aiNote').addEventListener('keydown',e=>{if(e.key==='Enter'&&(e.ctrlKey||e.metaKey)){e.preventDefault();runAI()}});
 document.getElementById('srchIn').addEventListener('keydown',e=>{if(e.key==='Enter')runSearch();if(e.key==='Escape')clearSearch()});
 </script>
