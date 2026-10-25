@@ -743,14 +743,14 @@ ${rulesForPrompt()}
 
 출력 규칙:
 - 코드블록(\`\`\`)이나 설명문 없이 JSON 객체 하나만 출력합니다.
-- reason은 한 문장, 60자 이내로 씁니다.
-- sub는 최대 4개, ro는 최대 3개, alternatives는 최대 2개, warnings·documentation은 각 최대 3개.
+- reason은 짧게 40자 이내로 씁니다. name은 KCD 공식 명칭만 씁니다.
+- sub는 최대 4개, ro는 최대 2개, alternatives는 최대 2개, warnings·documentation은 각 최대 2개이며 해당 없으면 빈 배열.
 - 불완전코드(세분류가 있는 3자리 코드 등)는 절대 쓰지 말고 반드시 세분류 코드로 씁니다(예: I10 대신 I109).
-- 기록에 처방·검사가 있어도 진단이 불확실하면, 사용불가 코드 대신 검사 적응증이 되는 의심 상병을 r/o로 넣습니다.
+- 진단이 불확실하면 사용불가 코드 대신 증상 코드나 r/o를 쓰되, r/o는 원칙 2의 경우에만 넣습니다.
 JSON 형식:
 {"main":{"code":"","name":"","reason":""},
  "sub":[{"code":"","name":"","reason":""}],
- "ro":[{"code":"","name":"","reason":"어떤 검사 때문인지"}],
+ "ro":[{"code":"","name":"","reason":"근거(규칙·의심 문구·이상 소견)"}],
  "alternatives":[{"code":"","name":"","reason":"주진단 대안과 선택 기준"}],
  "warnings":["이번 추천 상병과 이 기록에 실제로 해당하는 삭감 위험·규칙 주의만. 추천하지 않은 코드에 대한 일반 규칙 안내(예: T코드 쓰지 말 것)는 적지 않음. 없으면 빈 배열"],
  "documentation":["기록 보완 사항"]}`;
@@ -1025,13 +1025,18 @@ async function runAI(){
     let txt=await callClaude(sys,user,4000);
     let j=parseJSON(txt);
     if(!j||!j.main){out.innerHTML+=`<div class="alert warn"><div class="t">응답을 해석하지 못했습니다</div><div class="mut">다시 눌러 보세요. 반복되면 이 화면을 캡처해 알려 주세요.</div><details><summary>원문 보기</summary><pre class="ref">${esc(txt)}</pre></details></div>`;return}
-    const issues=validateAI(j,ordersAll+'\n'+masked);let fixed=false;
-    if(issues.length){
+    const ctxAll=ordersAll+'\n'+masked;const head=out.innerHTML;
+    const issues=validateAI(j,ctxAll);let fixed=false;
+    const lf=localFix(j,ctxAll);if(lf.length)fixed=lf;
+    const rest=validateAI(j,ctxAll);const t1=Date.now();
+    if(rest.length){
+      renderAI(j,ctxAll,fixed);out.insertAdjacentHTML('afterbegin','<div class="alert info" id="fixNote"><div class="t"><span class="spin"></span> 코드 문제를 보정하는 중입니다… 아래 결과는 보정 전입니다.</div></div>');
       btn.innerHTML='<span class="spin"></span>코드 보정 중…';
-      const fb=`앞의 추천에 다음 문제가 있습니다. 문제를 고친 JSON 전체를 같은 형식으로 다시 출력하세요.\n- `+issues.join('\n- ');
-      try{const t2=await callClaude(sys,user+'\n\n[이전 추천]\n'+JSON.stringify(j)+'\n\n[보정 요청]\n'+fb,4000);const j2=parseJSON(t2);if(j2&&j2.main){j=j2;fixed=issues}}catch(e){}
+      const fb=`앞의 추천에 다음 문제가 있습니다. 문제를 고친 JSON 전체를 같은 형식으로 다시 출력하세요.\n- `+rest.join('\n- ');
+      try{const t2=await callClaude(sys,user+'\n\n[이전 추천]\n'+JSON.stringify(j)+'\n\n[보정 요청]\n'+fb,4000);const j2=parseJSON(t2);if(j2&&j2.main){j=j2;localFix(j,ctxAll);fixed=[...(fixed||[]),...rest]}}catch(e){}
+      out.innerHTML=head;
     }
-    renderAI(j,ordersAll+'\n'+masked,fixed);if(found.length)out.insertAdjacentHTML('beforeend',drugCardHtml(found));
+    renderAI(j,ctxAll,fixed);const hint=document.getElementById('aiHint');if(hint)hint.textContent=`응답 ${((t1-t0)/1000).toFixed(1)}초${rest.length?` + 보정 ${((Date.now()-t1)/1000).toFixed(1)}초`:''}`;if(found.length)out.insertAdjacentHTML('beforeend',drugCardHtml(found));
     resLogRec(j,issues,fixed,ordersAll+'\n'+masked,t0);
     setTimeout(()=>{const c=document.querySelector('#aiOut .card:nth-of-type(2), #aiOut .alert.info');(document.getElementById('impBox')||c||out).scrollIntoView({behavior:'smooth',block:'start'})},50);
   }catch(e){out.innerHTML+=`<div class="alert bad"><div class="t">호출 실패</div>${esc(e.message||e)}<div class="mut">병원 네트워크에서 접속이 막혀 있거나 비밀번호·키가 잘못되었을 수 있습니다. 설정 탭의 연결 테스트로 확인하세요.</div></div>`}
@@ -1096,6 +1101,18 @@ function repairJSON(t){ // 잘린 JSON을 마지막 완결된 항목까지 살�
   try{return JSON.parse(body+lastStack.reverse().join(''))}catch(e){return null}
 }
 function childCodes(code){code=norm(code);return KCD.filter(r=>r[0]!==code&&r[0].startsWith(code)).slice(0,8)}
+function localFix(j,ctx){ // AI 재호출 없이 고칠 수 있는 것: 불완전코드·좌우 불일치 → 상세불명 세분류, 근거 없는 r/o 삭제
+  const notes=[];const unspec=c=>{const ch=KCD.filter(r=>r[0]!==c&&r[0].startsWith(c)&&!(r[3]||'').includes('I'));return ch.find(r=>/상세불명/.test(r[1]))||(ch.length===1?ch[0]:null)};
+  const fixOne=d=>{if(!d||!d.code)return;const c=norm(d.code);if(!KMAP[c])return;
+    if(kflags(c).includes('I')){const u=unspec(c);if(u){notes.push(`${c} 불완전코드 → ${u[0]} ${u[1]}`);d.code=u[0];d.name=u[1]}return}
+    const en=KMAP[c][2]||'';const side=/\bright\b|\bleft\b/i.test(en);
+    if(side&&d.name&&!/우측|오른|좌측|왼|\bright\b|\bleft\b|^\s*[우좌]|양측|bilat/i.test(d.name)){const u=unspec(c.slice(0,4));if(u&&u[0]!==c){notes.push(`${c} 좌우 근거 없음 → ${u[0]} ${u[1]}`);d.code=u[0];d.name=u[1]}}};
+  fixOne(j.main);(j.sub||[]).forEach(fixOne);(j.ro||[]).forEach(fixOne);
+  {const seen=new Set([j.main&&norm(j.main.code||'')]);const dd=arr=>(arr||[]).filter(d=>{if(!d||!d.code)return false;const c=norm(d.code);if(seen.has(c))return false;seen.add(c);return true});j.sub=dd(j.sub);j.ro=dd(j.ro)}
+  const inp0=analyze(ctx||'');const req=new Set();for(const r of DB.rules){if(r.type==='order'&&ruleHits(r,inp0))(r.add||[]).forEach(a=>req.add(parseCodes(a)[0].code))}
+  j.ro=(j.ro||[]).filter(d=>{if(!d||!d.code)return false;const c=norm(d.code),why=d.reason||'';if(req.has(c))return true;
+    if(/시행|촬영|검사/.test(why)&&!/r\/o|의심|상승|증가|저하|이상\s*소견|양성|비정상|elevat|high|positive|abnormal|↑|소견\s*있|보임|확인됨/i.test(why)){notes.push(`근거가 검사 시행뿐인 r/o ${c} 삭제`);return false}return true});
+  return notes}
 function validateAI(j,ctx){const iss=[];
   const each=(arr,label)=>(arr||[]).forEach(d=>{if(!d||!d.code)return;const c=norm(d.code);const f=kflags(c);
     if(!KMAP[c])iss.push(`${c}는 심평원 상병마스터에 없는 코드입니다. 실제 존재하는 코드로 바꾸세요.`);
@@ -1165,7 +1182,7 @@ function proxyUrl(){return (DB.settings.proxy||DEFAULT_PROXY||'').trim().replace
 function aiReady(){const S=DB.settings;return S.mode==='key'?!!S.key:!!(proxyUrl()&&S.pass)}
 async function callClaude(system,user,maxTokens,modelOverride){
   const model=modelOverride||DB.settings.model||'claude-sonnet-5-5';
-  const S=DB.settings;const body=JSON.stringify({model,max_tokens:maxTokens||1000,system,messages:[{role:'user',content:user}]});
+  const S=DB.settings;const sysBlk=typeof system==='string'&&system.length>3000?[{type:'text',text:system,cache_control:{type:'ephemeral'}}]:system;const body=JSON.stringify({model,max_tokens:maxTokens||1000,system:sysBlk,messages:[{role:'user',content:user}]});
   const r=S.mode==='key'
     ?await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'content-type':'application/json','x-api-key':S.key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body})
     :await fetch(proxyUrl(),{method:'POST',headers:{'content-type':'application/json','x-access-pass':S.pass||''},body});
