@@ -1145,6 +1145,7 @@ function denialTags(code,label){const f=kflags(code);const inT=!!KMAP[code];
   const note=DB.codeNotes[code];const t3=note?`<span class="tag" title="코드 메모">메모: ${esc(note)}</span>`:'<span class="tag" title="처방별 급여기준(고시)은 앱에 없음 — 심사팀 요청이 쌓이면 규칙으로 추가">급여기준: 미확인</span>';
   return t1+t2+t3}
 function dxLine(d,withCode){return (d.l==='주진단'?'(주) ':d.l==='r/o'?'R/O ':'(부) ')+(withCode?d.code+' ':'')+d.name}
+function dxMain(){const d=(window._dx||[]).find(x=>x.l==='주진단');return d?dxLine(d,false):''}
 function dxText(withCode){return (window._dx||[]).filter(d=>d.on).map(d=>dxLine(d,withCode)).join('\n')}
 function toggleDx(i){const d=(window._dx||[])[i];if(!d)return;d.on=!d.on;const el=document.getElementById('dxc'+i);
   if(el){el.style.opacity=d.on?'':'.4';const b=el.querySelector('.hd > button.danger');if(b){b.textContent=d.on?'×':'되살리기';b.title=d.on?'이 상병 빼기':'다시 넣기'}}
@@ -1162,7 +1163,7 @@ function renderAI(j,orders,fixed){
   const summary=['(주) '+norm(j.main.code)+' '+nm(j.main),...(j.sub||[]).filter(x=>x&&x.code).map(x=>'(부) '+norm(x.code)+' '+nm(x)),...(j.ro||[]).filter(x=>x&&x.code).map(x=>'R/O '+norm(x.code)+' '+nm(x))].join('\n');
   const q=t=>JSON.stringify(t).replace(/"/g,'&quot;');
   let h=fixed&&fixed.length?`<div class="alert info"><div class="t">첫 추천을 자동 보정했습니다</div><ul style="margin:4px 0 0 18px;padding:0">${fixed.map(x=>'<li>'+esc(x.split(':')[0].slice(0,80))+'</li>').join('')}</ul></div>`:'';
-  h+=`<div class="card"><div class="row" style="margin:0 0 8px"><h3 style="margin:0;flex:1">추천 상병</h3><button class="btn" onclick="insertImp(dxText(false))" title="위 입력창의 Imp) 아래에 진단명 넣기">Imp)에 넣기</button></div>
+  h+=`<div class="card"><div class="row" style="margin:0 0 8px"><h3 style="margin:0;flex:1">추천 상병</h3><button class="btn sec" onclick="insertImp(dxMain())" title="주진단 한 줄만 Imp) 아래에 넣기">주상병만 넣기</button><button class="btn" onclick="insertImp(dxText(false))" title="위 입력창의 Imp) 아래에 진단명 넣기">Imp)에 넣기</button></div>
    <div class="mut" style="margin:-2px 0 8px">필요 없는 상병은 각 상병 오른쪽 <b>×</b>로 빼세요. 남은 진단명이 입력창의 Imp) 아래에 들어갑니다(상병마다 따로 넣으려면 <b>+Imp</b>). <span style="white-space:nowrap"><a href="#" onclick="copyText(dxText(false));return false">진단명만 복사</a> · <a href="#" onclick="copyText(dxText(true));return false">코드 포함 복사</a></span></div>
    <pre class="ref" id="impBox" style="margin:0 0 8px;font-size:15px">${esc(impText)}</pre>`;
   let di=0;const wrap=(l,d)=>{if(!d||!d.code)return '';const i=di++;return dxCard(l,d).replace('<div class="dx"><div class="hd">',`<div class="dx" id="dxc${i}"><div class="hd"><button class="btn danger sm" style="order:99;margin-left:auto" title="이 상병 빼기" onclick="toggleDx(${i})">×</button>`)};
