@@ -375,6 +375,12 @@
     </div>
   </div>
   <div class="card">
+    <h3>원내 약품 사전</h3>
+    <p class="mut" style="margin:0 0 6px">AI가 처방 약을 잘못 짐작하지 않도록 상품명의 성분·분류를 알려 줍니다. 한 줄에 하나씩 "상품명 = 성분, 분류". 여기 없는 약은 AI가 성분을 추정하지 않고 "성분 확인 필요"로만 표시합니다.</p>
+    <textarea id="drugBox" style="min-height:160px;font-size:13px;line-height:1.5"></textarea>
+    <div class="row"><button class="btn" onclick="saveDrugs()">저장</button><button class="btn sec" onclick="resetDrugs()">기본값으로</button></div>
+  </div>
+  <div class="card">
     <h3>상병코드표</h3>
     <p class="mut" id="kcdStat"></p>
     <p class="mut">같은 폴더의 <code>kcd.json</code>(심평원 상병마스터 변환본, 형식: <code>[코드, 한글명, 영문명, 속성, 동의어]</code>)을 자동으로 읽습니다. 속성: I 불완전코드, P 주상병불가, F/M 성별, a하한-상한 연령. 또는 아래에서 JSON/CSV(코드,한글명,영문명) 파일을 직접 불러올 수 있습니다(이번 세션만 유지).</p>
@@ -723,6 +729,10 @@ function buildSystem(){
 10. 머리 외상 후 진탕 증상(오심, 구토, 두통, 어지럼, 기억상실, 일시적 의식소실·혼돈 중 하나 이상)이 있으면 S0600(열린 두개내상처가 없는 진탕)을 r/o가 아닌 부진단(또는 주진단)으로 넣습니다. 진탕은 임상 진단이며 Brain CT 정상은 진탕을 배제하지 않습니다. 진탕 증상이 전혀 없이 CT만 시행한 경우에만 r/o S0600으로 둡니다.
 11. 좌우·부위가 나뉜 세분류(예: R1010 우상복부통증, R1012 명치통증, R1019 상세불명의 상복부통증)는 기록에 그 위치가 적혀 있을 때만 고릅니다. 위치가 없으면 '상세불명' 세분류를 씁니다. name에는 고른 코드의 공식 명칭을 그대로 적습니다.
 12. 확신이 낮은 코드는 reason에 그 이유와 대안을 적습니다. 코드가 KCD-8에 실제로 존재하는지 확신이 없으면 "코드 확인 필요"라고 적습니다.
+13. 처방 약의 성분·분류는 아래 '원내 약품 사전'으로만 판단합니다. 사전에 없는 상품명은 이름이 비슷해 보여도 성분이나 계열(예: 항생제)을 추정하지 않으며, 추정한 약효를 근거로 상병·warnings·documentation을 만들지 않습니다. 필요하면 documentation에 "OO 성분 확인 필요"라고만 적습니다.
+
+원내 약품 사전 (상품명 = 성분, 분류):
+${curDrugs()}
 
 이 기록을 쓴 의사의 기록 형식과 약어:
 ${curLegend()}
@@ -745,6 +755,18 @@ JSON 형식:
  "warnings":["이번 추천 상병과 이 기록에 실제로 해당하는 삭감 위험·규칙 주의만. 추천하지 않은 코드에 대한 일반 규칙 안내(예: T코드 쓰지 말 것)는 적지 않음. 없으면 빈 배열"],
  "documentation":["기록 보완 사항"]}`;
 }
+const DRUG_DEFAULT=`Profa inj = acetaminophen(파라세타몰) 주사, 해열진통제 (항생제 아님)
+Gaster inj = famotidine, H2 차단제(위산 억제)
+Macperan inj = metoclopramide, 진토제
+Tridol inj = tramadol, 마약성 유사 진통제
+Buscopan inj = hyoscine butylbromide, 진경제
+Peniramin inj = chlorpheniramine, 항히스타민제
+Tarasyn inj = ketorolac, 비스테로이드 소염진통제
+Dexamethasone inj = dexamethasone, 스테로이드`;
+function curDrugs(){return (typeof DB.drugs==='string'?DB.drugs:DRUG_DEFAULT).trim()}
+function renderDrugs(){const b=document.getElementById('drugBox');if(b)b.value=curDrugs()}
+function saveDrugs(){DB.drugs=document.getElementById('drugBox').value;save();toast('약품 사전을 저장했습니다')}
+function resetDrugs(){if(!confirm('약품 사전을 기본값으로 되돌릴까요?'))return;delete DB.drugs;save();renderDrugs()}
 const NOTE_TEMPLATE=`CC)
 onset)
 
@@ -1125,7 +1147,7 @@ function groupOf(t){for(const g in GROUPS)if(GROUPS[g].some(x=>x[0]===t))return 
 function renderNav(t){const g=groupOf(t);document.querySelectorAll('#navTop button').forEach(b=>b.classList.toggle('on',b.dataset.g===g));
   document.getElementById('navSub').innerHTML=GROUPS[g].map(([id,nm])=>`<button data-t="${id}" class="${id===t?'on':''}" onclick="showTab('${id}')">${nm}</button>`).join('')}
 document.querySelectorAll('#navTop button').forEach(b=>b.onclick=()=>showTab(GROUPS[b.dataset.g][0][0]));
-function renderAll(){renderRules();renderLogs();renderStats();updAiHint()}
+function renderAll(){renderDrugs();renderRules();renderLogs();renderStats();updAiHint()}
 load();migrateLegend();renderTplSel();setKcd(KCD_BUILTIN,'내장 임시 코드표');loadKcdJson();renderAll();loadSettingsUI();
 document.getElementById('lgDate').value=new Date().toISOString().slice(0,10);document.getElementById('gpDate').value=new Date().toISOString().slice(0,10);R();
 showTab('ai');try{if(!localStorage.getItem('dscode_seen')){localStorage.setItem('dscode_seen','1');showTab('help')}}catch(e){}
