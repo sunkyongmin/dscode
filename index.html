@@ -376,7 +376,7 @@
   </div>
   <div class="card">
     <h3>원내 약품 사전</h3>
-    <p class="mut" style="margin:0 0 6px">AI가 처방 약을 잘못 짐작하지 않도록 상품명의 성분·분류를 알려 줍니다. 한 줄에 하나씩 "상품명 = 성분, 분류". 여기 없는 약은 AI가 성분을 추정하지 않고 "성분 확인 필요"로만 표시합니다.</p>
+    <p class="mut" style="margin:0 0 6px">AI가 처방 약을 잘못 짐작하지 않도록 상품명의 성분·분류를 알려 줍니다. 한 줄에 하나씩 "상품명 = 성분, 분류". 여기 없는 약은 AI가 성분을 추정하지 않고 "성분 확인 필요"로만 표시합니다. 중계 서버에 식약처 인증키(MFDS_KEY)를 등록해 두면, 사전에 없는 약을 상병 추천 때 식약처 허가정보에서 자동으로 찾아 함께 보내고 "사전에 추가" 버튼을 띄웁니다.</p>
     <textarea id="drugBox" style="min-height:160px;font-size:13px;line-height:1.5"></textarea>
     <div class="row"><button class="btn" onclick="saveDrugs()">저장</button><button class="btn sec" onclick="resetDrugs()">기본값으로</button></div>
   </div>
@@ -729,7 +729,7 @@ function buildSystem(){
 10. 머리 외상 후 진탕 증상(오심, 구토, 두통, 어지럼, 기억상실, 일시적 의식소실·혼돈 중 하나 이상)이 있으면 S0600(열린 두개내상처가 없는 진탕)을 r/o가 아닌 부진단(또는 주진단)으로 넣습니다. 진탕은 임상 진단이며 Brain CT 정상은 진탕을 배제하지 않습니다. 진탕 증상이 전혀 없이 CT만 시행한 경우에만 r/o S0600으로 둡니다.
 11. 좌우·부위가 나뉜 세분류(예: R1010 우상복부통증, R1012 명치통증, R1019 상세불명의 상복부통증)는 기록에 그 위치가 적혀 있을 때만 고릅니다. 위치가 없으면 '상세불명' 세분류를 씁니다. name에는 고른 코드의 공식 명칭을 그대로 적습니다.
 12. 확신이 낮은 코드는 reason에 그 이유와 대안을 적습니다. 코드가 KCD-8에 실제로 존재하는지 확신이 없으면 "코드 확인 필요"라고 적습니다.
-13. 처방 약의 성분·분류는 아래 '원내 약품 사전'으로만 판단합니다. 사전에 없는 상품명은 이름이 비슷해 보여도 성분이나 계열(예: 항생제)을 추정하지 않으며, 추정한 약효를 근거로 상병·warnings·documentation을 만들지 않습니다. 필요하면 documentation에 "OO 성분 확인 필요"라고만 적습니다.
+13. 처방 약의 성분·분류는 아래 '원내 약품 사전'과, 입력 끝에 붙는 '[식약처 허가정보에서 확인한 약]'으로만 판단합니다. 사전에 없는 상품명은 이름이 비슷해 보여도 성분이나 계열(예: 항생제)을 추정하지 않으며, 추정한 약효를 근거로 상병·warnings·documentation을 만들지 않습니다. 필요하면 documentation에 "OO 성분 확인 필요"라고만 적습니다.
 
 원내 약품 사전 (상품명 = 성분, 분류):
 ${curDrugs()}
@@ -1018,7 +1018,9 @@ async function runAI(){
   const btn=document.getElementById('aiBtn');btn.disabled=true;btn.innerHTML='<span class="spin"></span>추천 중…';const t0=Date.now();
   out.innerHTML=`<div class="card"><details><summary>전송한 내용 (개인정보 자동 가림 적용)</summary><pre class="ref" style="margin-top:8px">${esc(masked)}${ordersAll?'\n\n[처방·검사·처치] '+esc(ordersAll):''}</pre></details></div>`;
   try{
-    const user=`[의무기록]\n${masked}\n\n[처방·검사·처치]\n${ordersAll||'(기재 없음)'}`;
+    let found=[];if(ordersAll){btn.innerHTML='<span class="spin"></span>약 확인 중…';try{found=await lookupUnknownDrugs(ordersAll)}catch(e){}btn.innerHTML='<span class="spin"></span>추천 중…'}
+    window._drugFound=found;
+    const user=`[의무기록]\n${masked}\n\n[처방·검사·처치]\n${ordersAll||'(기재 없음)'}`+drugPromptBlock(found);
     const sys=buildSystem();
     let txt=await callClaude(sys,user,4000);
     let j=parseJSON(txt);
@@ -1029,12 +1031,47 @@ async function runAI(){
       const fb=`앞의 추천에 다음 문제가 있습니다. 문제를 고친 JSON 전체를 같은 형식으로 다시 출력하세요.\n- `+issues.join('\n- ');
       try{const t2=await callClaude(sys,user+'\n\n[이전 추천]\n'+JSON.stringify(j)+'\n\n[보정 요청]\n'+fb,4000);const j2=parseJSON(t2);if(j2&&j2.main){j=j2;fixed=issues}}catch(e){}
     }
-    renderAI(j,ordersAll+'\n'+masked,fixed);
+    renderAI(j,ordersAll+'\n'+masked,fixed);if(found.length)out.insertAdjacentHTML('beforeend',drugCardHtml(found));
     resLogRec(j,issues,fixed,ordersAll+'\n'+masked,t0);
     setTimeout(()=>{const c=document.querySelector('#aiOut .card:nth-of-type(2), #aiOut .alert.info');(document.getElementById('impBox')||c||out).scrollIntoView({behavior:'smooth',block:'start'})},50);
   }catch(e){out.innerHTML+=`<div class="alert bad"><div class="t">호출 실패</div>${esc(e.message||e)}<div class="mut">병원 네트워크에서 접속이 막혀 있거나 비밀번호·키가 잘못되었을 수 있습니다. 설정 탭의 연결 테스트로 확인하세요.</div></div>`}
   finally{btn.disabled=false;btn.textContent='상병 추천'}
 }
+/* ---------- 사전에 없는 약: 식약처 허가정보로 확인 ---------- */
+const DRUG_LINE=/\b(inj|infu|infusion|tab|tabs|cap|caps|amp|susp|suspension|syr|syrup|soln|bag|vial|mg|mcg|ml|iu|patch|oint|cream)\b|주사|[가-힣]정\b|캡슐|시럽|현탁/i;
+const NOT_DRUG=/\b(cbc|crp|ct|mri|x-?ray|ekg|ecg|ua|lft|bun|panel|culture|troponin|bnp|d-dimer|abga|sono|us|echo|test|sporder)\b|검사|촬영|초음파|드레싱|봉합/i;
+function dictKeys(){const ks=new Set();curDrugs().split('\n').forEach(l=>{if(/^\s*#/.test(l)||!l.includes('='))return;const h=l.split('=')[0];
+  (h.match(/\(([^)]*)\)/g)||[]).forEach(c=>c.replace(/[()]/g,'').split(/[,\s]+/).forEach(x=>{if(x.length>=2)ks.add(x.toUpperCase())}));
+  h.replace(/\([^)]*\)/g,'').split(/[,/]|·/).forEach(seg=>{const w=(seg.trim().match(/^[A-Za-z][A-Za-z.\-]+|^[가-힣]+/)||[''])[0].replace(/\.$/,'');if(w.length>=3)ks.add(w.toUpperCase())})});return ks}
+function drugWord(l){return ((l.replace(/^[@#+\s{}\[\]A-Z0-9]*(MIX\d)?[}\]]?\s*/,'').match(/^[A-Za-z][A-Za-z.\-]+|^[가-힣]+/)||[''])[0]).replace(/\.$/,'')}
+function unknownDrugLines(orders){const ks=dictKeys();const seen=new Set();
+  return String(orders||'').split(/\n|;/).map(x=>x.trim()).filter(l=>l&&DRUG_LINE.test(l)&&!NOT_DRUG.test(l)).filter(l=>{
+    const toks=l.toUpperCase().split(/[\s/(),]+/);if(toks.some(t=>ks.has(t)))return false;
+    const w=drugWord(l).toUpperCase();if(!w||w.length<3||ks.has(w)||seen.has(w))return false;seen.add(w);return true}).slice(0,5)}
+let drugCache={};
+async function lookupUnknownDrugs(orders){
+  if(DB.settings.mode!=='proxy'||!aiReady())return [];
+  const lines=unknownDrugLines(orders).filter(l=>!(l in drugCache));
+  if(lines.length){
+    let qs=[];
+    try{const t=await callClaude('EMR 처방명을 보고 한국 식약처 허가 품목명 검색어를 만듭니다. 각 줄에 대해 한국에서 허가된 제품명(한글) 앞부분만 적습니다(예: "Tiraem Amp 50mg / 신풍제약" → "티램", "Pantoloc Inj 40mg" → "판토록"). 제조사가 적혀 있으면 entp에 회사명 핵심(예: 신풍)을 적습니다. 확실하지 않아도 가장 그럴듯한 한글 표기를 적습니다. JSON 배열만 출력: [{"line":"원문","name":"한글 검색어","entp":"회사"}]',
+      lines.join('\n'),400,'claude-haiku-5-5');const j=parseJSON(t);if(Array.isArray(j))qs=j}catch(e){}
+    const q=lines.map((l,i)=>{const m=qs.find(x=>x&&x.line===l)||qs[i]||{};const ent=(l.split('/').slice(1).join(' ').match(/[가-힣]{2,}/)||[''])[0].replace(/(제약|약품|약품공업|팜|공업)$/,'');return {line:l,name:(m.name||'').trim(),entp:(m.entp||ent||'').trim()}}).filter(x=>x.name);
+    if(q.length){try{const r=await fetch(proxyUrl(),{method:'POST',headers:{'content-type':'application/json','x-access-pass':DB.settings.pass||''},body:JSON.stringify({op:'drug',q:q.map(x=>({name:x.name,entp:x.entp}))})});
+      const d=await r.json();if(d&&d.ok&&Array.isArray(d.results))q.forEach((x,i)=>{const it=(d.results[i]&&d.results[i].items)||[];drugCache[x.line]=it.length?{...x,item:it[0],ok:d.results[i].matched!==false}:null});}catch(e){}}
+  }
+  return unknownDrugLines(orders).map(l=>drugCache[l]).filter(Boolean);
+}
+function drugFact(f){const it=f.item;const pick=re=>{for(const k of Object.keys(it))if(re.test(k))return it[k];return ''};
+  const ingr=pick(/INGR_NAME|MAIN_ITEM_INGR|^ITEM_INGR/i)||pick(/INGR/i);const cls=pick(/PRDUCT_TYPE|CLASS_NAME/i);const sp=pick(/SPCLTY_PBLC|ETC_OTC/i);
+  return {ingr:String(ingr).replace(/\s+/g,' ').slice(0,160),cls:String(cls).slice(0,60),sp,item:it.ITEM_NAME||'',entp:it.ENTP_NAME||''}}
+function drugPromptBlock(found){found=found.filter(f=>f.ok);if(!found.length)return '';
+  return '\n\n[약품 사전에 없어 식약처 허가정보에서 확인한 약]\n'+found.map(f=>{const x=drugFact(f);return `- ${f.line} → ${x.item}${x.entp?' ('+x.entp+')':''}: 성분 ${x.ingr||'미상'}${x.cls?', 분류 '+x.cls:''}${x.sp?', '+x.sp:''}`}).join('\n')}
+function drugCardHtml(found){if(!found.length)return '';
+  return `<div class="card"><h3>새로 확인한 약 <span class="tag">식약처 허가정보</span></h3><p class="mut" style="margin:0 0 6px">약품 사전에 없던 약을 식약처 허가정보에서 찾아 AI에게 함께 보냈습니다. 맞으면 사전에 추가하세요(급여 여부는 직접 확인).</p>${found.map((f,i)=>{const x=drugFact(f);
+    return `<div class="res" style="padding:6px 0;border-top:1px solid var(--line)"><b>${esc(f.line)}</b><div class="mut">→ ${esc(x.item)} ${x.entp?'· '+esc(x.entp):''}${f.ok?'':'<br><b style="color:var(--bad)">제조사가 달라 AI에게 보내지 않음 — 같은 약인지 확인 필요</b>'}<br>성분: ${esc(x.ingr||'미상')}${x.cls?' · 분류: '+esc(x.cls):''}${x.sp?' · '+esc(x.sp):''}</div><button class="btn sec sm" onclick="addDrugFound(${i})">사전에 추가</button></div>`}).join('')}</div>`}
+function addDrugFound(i){const f=(window._drugFound||[])[i];if(!f)return;const x=drugFact(f);const name=f.line.split('/')[0].trim();
+  const line=`${name} = ${x.ingr||x.item}${x.cls?', '+x.cls:''} (식약처 확인: ${x.item})`;DB.drugs=curDrugs()+'\n'+line;save();renderDrugs();toast('약품 사전에 추가했습니다')}
 function parseJSON(t){
   t=String(t||'').replace(/```(?:json)?/gi,'').trim();
   try{return JSON.parse(t)}catch(e){}
@@ -1123,8 +1160,8 @@ function renderAI(j,orders,fixed){
 }
 function proxyUrl(){return (DB.settings.proxy||DEFAULT_PROXY||'').trim().replace(/\/+$/,'')}
 function aiReady(){const S=DB.settings;return S.mode==='key'?!!S.key:!!(proxyUrl()&&S.pass)}
-async function callClaude(system,user,maxTokens){
-  const model=DB.settings.model||'claude-sonnet-5-5';
+async function callClaude(system,user,maxTokens,modelOverride){
+  const model=modelOverride||DB.settings.model||'claude-sonnet-5-5';
   const S=DB.settings;const body=JSON.stringify({model,max_tokens:maxTokens||1000,system,messages:[{role:'user',content:user}]});
   const r=S.mode==='key'
     ?await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'content-type':'application/json','x-api-key':S.key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body})
