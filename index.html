@@ -1057,7 +1057,7 @@ function unknownDrugLines(orders){const ks=dictKeys();const seen=new Set();
     const w=drugWord(l).toUpperCase();if(!w||w.length<3||ks.has(w)||seen.has(w))return false;seen.add(w);return true}).slice(0,5)}
 let drugCache={};
 async function drugTest(){const o=document.getElementById('drugTestOut');o.style.display='block';const name=document.getElementById('drugTestIn').value.trim()||'타이레놀';
-  if(DB.settings.mode!=='proxy'){o.textContent='중계 서버 모드에서만 됩니다(설정 → AI 연결).';return}
+  if(DB.settings.mode==='key'){o.textContent='중계 서버 모드에서만 됩니다(설정 → AI 연결).';return}
   o.textContent='확인 중…';let msg='';
   try{const r=await fetch(proxyUrl());const d=await r.json();msg+='1) 중계 서버 상태: '+JSON.stringify(d)+(d.drug?'  → 식약처 키 있음':'  → 식약처 키(MFDS_KEY)가 없거나 새 코드가 배포되지 않음')+'\n';drugAvail=!!d.drug}catch(e){msg+='1) 중계 서버 접속 실패: '+e.message+'\n'}
   try{const r=await fetch(proxyUrl(),{method:'POST',headers:{'content-type':'application/json','x-access-pass':DB.settings.pass||''},body:JSON.stringify({op:'drug',q:[{name}]})});const t=await r.text();
@@ -1068,7 +1068,7 @@ async function drugTest(){const o=document.getElementById('drugTestOut');o.style
 let drugAvail=null; // 중계 서버에 식약처 키(MFDS_KEY)가 있는지 — 없으면 자동 조회를 건너뜀
 async function drugReady(){if(drugAvail!==null)return drugAvail;try{const r=await fetch(proxyUrl());const d=await r.json();drugAvail=!!(d&&d.drug)}catch(e){drugAvail=false}return drugAvail}
 async function lookupUnknownDrugs(orders){
-  if(DB.settings.mode!=='proxy'||!aiReady())return [];
+  if(DB.settings.mode==='key'||!aiReady())return [];
   if(!(await drugReady()))return [];
   const lines=unknownDrugLines(orders).filter(l=>!(l in drugCache));
   if(lines.length){
