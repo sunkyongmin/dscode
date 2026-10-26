@@ -107,6 +107,7 @@
         <button class="btn" id="aiBtn" onclick="runAI()">상병 추천</button><span class="mut">Ctrl+Enter</span>
         <button class="btn sec" onclick="clearAI()" style="margin-left:auto">다음 환자 (비우기)</button>
       </div>
+      <div id="aiProg" style="display:none;margin-top:8px"><div style="height:8px;background:var(--line);border-radius:4px;overflow:hidden"><div id="aiProgBar" style="height:100%;width:0;background:var(--pri,#1f4e8c);border-radius:4px;transition:width .4s ease"></div></div><div class="mut" id="aiProgTxt" style="margin-top:3px;font-size:12px"></div></div>
       <div class="mut" id="aiHint" style="margin-top:4px"></div></div></div>
   </div>
   <div id="aiOut"></div>
@@ -1010,6 +1011,11 @@ function renderGaps(){R();const el=document.getElementById('gapList');if(!el)ret
   el.innerHTML=DB.gaps.length?'<div class="card"><table><tr><th>날짜</th><th>상황 / 임상적 필요</th><th>관련 기준 / 조치</th><th></th></tr>'+DB.gaps.map(x=>`<tr><td>${esc(x.date)}</td><td>${esc(x.context)}<div class="mut">${esc(x.clinical_need)}</div></td><td>${esc(x.rule)}<div class="mut">${esc(x.action)}${x.memo?' · '+esc(x.memo):''}</div></td><td><button class="btn danger sm" onclick="delGap('${x.id}')">삭제</button></td></tr>`).join('')+'</table></div>':'<div class="alert info">아직 괴리 사례가 없습니다.</div>'}
 function gapFromAI(){const last=window._lastHits||[];showTab('log');setTimeout(()=>{const s=document.getElementById('gpRule');if(last[0]){const o=[...s.options].find(o=>o.text===last[0]);if(o)s.value=o.text}document.getElementById('gapCard').scrollIntoView({behavior:'smooth'});document.getElementById('gpCtx').focus()},60)}
 function clearAI(){curLogId=null;document.getElementById('aiNote').value='';document.getElementById('aiOrders').value='';document.getElementById('aiOut').innerHTML=''}
+const PROG={t:null,start:0,base:0,span:0,exp:12000};
+function progStart(){const el=document.getElementById('aiProg');el.style.display='block';PROG.exp=(DB.settings.avgMs||12000);progStage('추천 상병을 만드는 중',0,85)}
+function progStage(label,from,to,exp){clearInterval(PROG.t);PROG.start=Date.now();PROG.base=from;PROG.span=to-from;const e=exp||PROG.exp;document.getElementById('aiProgTxt').textContent=label+'…';
+  const tick=()=>{const k=(Date.now()-PROG.start)/e;const pct=PROG.base+PROG.span*(1-Math.exp(-2.2*k));document.getElementById('aiProgBar').style.width=Math.min(pct,PROG.base+PROG.span).toFixed(1)+'%'};tick();PROG.t=setInterval(tick,200)}
+function progEnd(ok){clearInterval(PROG.t);const bar=document.getElementById('aiProgBar');bar.style.width='100%';document.getElementById('aiProgTxt').textContent=ok?'완료':'';setTimeout(()=>{document.getElementById('aiProg').style.display='none';bar.style.width='0'},700)}
 async function runAI(){
   const note=document.getElementById('aiNote').value.trim();const orders=document.getElementById('aiOrders').value.trim();const out=document.getElementById('aiOut');
   if(!note){toast('의무기록을 입력하세요');return}
@@ -1017,10 +1023,10 @@ async function runAI(){
   if(!aiReady()){out.innerHTML='<div class="alert warn"><div class="t">AI 연결 설정이 필요합니다</div>참고·설정 → 설정에서 응급실 비밀번호(또는 API 키)를 저장하세요.</div>';return}
   const ordersAll=maskPHI(orders);
   const masked=maskPHI(note);
-  const btn=document.getElementById('aiBtn');btn.disabled=true;btn.innerHTML='<span class="spin"></span>추천 중…';const t0=Date.now();
+  const btn=document.getElementById('aiBtn');btn.disabled=true;btn.innerHTML='<span class="spin"></span>추천 중…';const t0=Date.now();progStart();let okRun=false;
   out.innerHTML=`<div class="card"><details><summary>전송한 내용 (개인정보 자동 가림 적용)</summary><pre class="ref" style="margin-top:8px">${esc(masked)}${ordersAll?'\n\n[처방·검사·처치] '+esc(ordersAll):''}</pre></details></div>`;
   try{
-    let found=[];if(ordersAll){btn.innerHTML='<span class="spin"></span>약 확인 중…';try{found=await lookupUnknownDrugs(ordersAll)}catch(e){}btn.innerHTML='<span class="spin"></span>추천 중…'}
+    let found=[];if(ordersAll){btn.innerHTML='<span class="spin"></span>약 확인 중…';progStage('처방 약 확인 중',0,15,4000);try{found=await lookupUnknownDrugs(ordersAll)}catch(e){}progStage('추천 상병을 만드는 중',15,85);btn.innerHTML='<span class="spin"></span>추천 중…'}
     window._drugFound=found;
     const user=`[의무기록]\n${masked}\n\n[처방·검사·처치]\n${ordersAll||'(기재 없음)'}`+drugPromptBlock(found);
     const sys=buildSystem();
@@ -1033,16 +1039,16 @@ async function runAI(){
     const rest=validateAI(j,ctxAll);const t1=Date.now();
     if(rest.length){
       renderAI(j,ctxAll,fixed);out.insertAdjacentHTML('afterbegin','<div class="alert info" id="fixNote"><div class="t"><span class="spin"></span> 코드 문제를 보정하는 중입니다… 아래 결과는 보정 전입니다.</div></div>');
-      btn.innerHTML='<span class="spin"></span>코드 보정 중…';
+      btn.innerHTML='<span class="spin"></span>코드 보정 중…';progStage('코드 문제를 보정하는 중',85,97,PROG.exp);
       const fb=`앞의 추천에 다음 문제가 있습니다. 문제를 고친 JSON 전체를 같은 형식으로 다시 출력하세요.\n- `+rest.join('\n- ');
       try{const t2=await callClaude(sys,user+'\n\n[이전 추천]\n'+JSON.stringify(j)+'\n\n[보정 요청]\n'+fb,4000);const j2=parseJSON(t2);if(j2&&j2.main){j=j2;localFix(j,ctxAll);fixed=[...(fixed||[]),...rest]}}catch(e){}
       out.innerHTML=head;
     }
-    renderAI(j,ctxAll,fixed);const hint=document.getElementById('aiHint');if(hint)hint.textContent=`응답 ${((t1-t0)/1000).toFixed(1)}초${rest.length?` + 보정 ${((Date.now()-t1)/1000).toFixed(1)}초`:''}`;if(found.length)out.insertAdjacentHTML('beforeend',drugCardHtml(found));
+    renderAI(j,ctxAll,fixed);{const ms=t1-t0;DB.settings.avgMs=Math.round(DB.settings.avgMs?DB.settings.avgMs*0.7+ms*0.3:ms);save()}okRun=true;
     resLogRec(j,issues,fixed,ordersAll+'\n'+masked,t0);
     setTimeout(()=>{const c=document.querySelector('#aiOut .card:nth-of-type(2), #aiOut .alert.info');(document.getElementById('impBox')||c||out).scrollIntoView({behavior:'smooth',block:'start'})},50);
   }catch(e){out.innerHTML+=`<div class="alert bad"><div class="t">호출 실패</div>${esc(e.message||e)}<div class="mut">병원 네트워크에서 접속이 막혀 있거나 비밀번호·키가 잘못되었을 수 있습니다. 설정 탭의 연결 테스트로 확인하세요.</div></div>`}
-  finally{btn.disabled=false;btn.textContent='상병 추천'}
+  finally{btn.disabled=false;btn.textContent='상병 추천';progEnd(okRun)}
 }
 /* ---------- 사전에 없는 약: 식약처 허가정보로 확인 ---------- */
 const DRUG_LINE=/\b(inj|infu|infusion|tab|tabs|cap|caps|amp|susp|suspension|syr|syrup|soln|bag|vial|mg|mcg|ml|iu|patch|oint|cream)\b|주사|[가-힣]주(?![가-힣])|[가-힣]정\b|캡슐|시럽|현탁/i;
