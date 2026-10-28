@@ -758,7 +758,20 @@ JSON 형식:
  "warnings":["이번 추천 상병과 이 기록에 실제로 해당하는 삭감 위험·규칙 주의만. 추천하지 않은 코드에 대한 일반 규칙 안내(예: T코드 쓰지 말 것)는 적지 않음. 없으면 빈 배열"],
  "documentation":["기록 보완 사항"]}`;
 }
-const DRUG_DEFAULT=`# 주사약
+const DRUG_DEFAULT=`# 응급 카트(e-cart)
+글루콘산칼슘 (Calcium gluconate) = calcium gluconate 주사, 칼슘 보충·고칼륨혈증 심근 보호
+지씨비본주, 비본 (Bivon) = sodium bicarbonate(탄산수소나트륨) 주사, 대사성 산증·고칼륨혈증 교정
+아데노코 (Adenocor) = adenosine 주사, 항부정맥제(PSVT)
+큐프린주, 큐프린 (Cuprin) = norepinephrine 주사, 승압제 (5% 포도당 희석)
+이솝틴 (Isoptin) = verapamil 주사, 칼슘통로차단 항부정맥제
+아넥세이트 (Anexate) = flumazenil 주사, 벤조디아제핀 길항제
+아트로핀 (Atropine) = atropine 주사, 항콜린제(서맥·유기인 중독)
+도부타민 (Dobutamine) = dobutamine 주사, 강심제
+이노판 (Inopan) = dopamine 주사, 승압제
+NTG (Nitroglycerin) = nitroglycerin, 질산염 혈관확장제(협심증)
+에피네프린 (Epinephrine) = epinephrine 주사, 심정지·아나필락시스
+
+# 주사약
 Profa Infusion Inj 100ml/bag (AAPIV) = acetaminophen 1g/100mL(10mg/mL) 주사, 해열진통제 (항생제 아님), 비급여
 Paceta Inj 1g/V (PCMV) = propacetamol(아세트아미노펜 전구약물) 주사, 해열진통제
 Macperan Inj 2ml (MCPA) = metoclopramide, 진토제
@@ -842,6 +855,7 @@ Axicla Tab 625mg (W-AUG) = amoxicillin·clavulanate, 페니실린계 항생제
 Amoxicillin Cap 500mg (W-AX50) = amoxicillin, 페니실린계 항생제
 # 퇴실 약 묶음처방 (묶음 이름 = 쓰는 상황)
 gastritis: Sparod + Pamagen / 진통소염제: Aceclan + Pamagen / 두드러기: Peniramin + Solondo + Restam / 기관지염: Restam + Codenal + Muteran + Peniramin / 독감: Tamiflu / 해열제: Tylenol ER + Alupen / 상처: Cefaclor + Restam / 어지럼증: Restam + Bonaling-A + Macperan / 요로감염: Pamagen + Ceracin / 대상포진: Fambir + Pamagen + Peniramin + Alupen / 타박상(CKD): Tranophen + Pamagen / 두통: Tranophen + Pamagen / 진통제: Alupen`;
+function migrateDrugs(){if(typeof DB.drugs==='string'&&!DB.drugs.includes('# 응급 카트(e-cart)')){const blk=DRUG_DEFAULT.split('\n\n# 주사약')[0];DB.drugs=DB.drugs.trim()+'\n\n'+blk;save()}}
 function curDrugs(){return (typeof DB.drugs==='string'?DB.drugs:DRUG_DEFAULT).trim()}
 function renderDrugs(){const b=document.getElementById('drugBox');if(b)b.value=curDrugs()}
 function saveDrugs(){DB.drugs=document.getElementById('drugBox').value;save();toast('약품 사전을 저장했습니다')}
@@ -1302,7 +1316,7 @@ function renderNav(t){const g=groupOf(t);document.querySelectorAll('#navTop butt
   document.getElementById('navSub').innerHTML=GROUPS[g].map(([id,nm])=>`<button data-t="${id}" class="${id===t?'on':''}" onclick="showTab('${id}')">${nm}</button>`).join('')}
 document.querySelectorAll('#navTop button').forEach(b=>b.onclick=()=>showTab(GROUPS[b.dataset.g][0][0]));
 function renderAll(){renderDrugs();renderRules();renderLogs();renderStats();updAiHint()}
-load();migrateLegend();renderTplSel();setKcd(KCD_BUILTIN,'내장 임시 코드표');loadKcdJson();renderAll();loadSettingsUI();
+load();migrateLegend();migrateDrugs();renderTplSel();setKcd(KCD_BUILTIN,'내장 임시 코드표');loadKcdJson();renderAll();loadSettingsUI();
 document.getElementById('lgDate').value=new Date().toISOString().slice(0,10);document.getElementById('gpDate').value=new Date().toISOString().slice(0,10);R();
 showTab('ai');try{if(!localStorage.getItem('dscode_seen')){localStorage.setItem('dscode_seen','1');showTab('help')}}catch(e){}
 function tidyNote(t){ // EMR에서 V/S를 붙여넣을 때 생기는 빈 V/S 줄·빈 줄 정리
