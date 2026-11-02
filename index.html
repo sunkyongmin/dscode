@@ -916,10 +916,8 @@ dizziness-
 
 PEx)
 Alert, GCS 15
-Wound) 부위 / 형태 / 크기 cm
-tenderness/swelling) 
-ROM) 
 SMC intact
+
 
 Results)
 X-ray: 
@@ -1272,7 +1270,8 @@ function migrateLegend(){const L=DB.settings.legend;if(L&&(L.includes('"->" 아�
       t=t.replace(/^Injury\) 시각 \/ 장소 \/ 기전[^\n]*\n/m,'');
       if(!/SMC/.test(t))t=t.replace(/^(ROM\)[^\n]*)$/m,'$1\nSMC intact');
       t=t.replace(/^V\/S:[ \t]*\n/m,'').replace(/^Lab:[ \t]*\n/m,'');
-      tr.text=t;if(tr.legend&&!tr.legend.includes('SMC ='))tr.legend=tr.legend.replace(', Wound) 상처 부위',', SMC = sensory·motor·circulation, Wound) 상처 부위');tr.v2=1}}
+      tr.text=t;if(tr.legend&&!tr.legend.includes('SMC ='))tr.legend=tr.legend.replace(', Wound) 상처 부위',', SMC = sensory·motor·circulation, Wound) 상처 부위');tr.v2=1}
+      if(tr&&!tr.v3){tr.text=tr.text.replace(/^Wound\) 부위 \/ 형태 \/ 크기 cm[ \t]*\n/m,'').replace(/^tenderness\/swelling\)[ \t]*\n/m,'').replace(/^ROM\)[ \t]*\n/m,'').replace(/^(SMC intact)[ \t]*\n(?!\n)/m,'$1\n\n');tr.v3=1}}
     if(!DB.settings.traumaAdded){if(!DB.templates.some(x=>x.id==='trauma'))DB.templates.push({id:'trauma',name:'선경민 과장 — 외상',text:TRAUMA_TEMPLATE,legend:LEGEND_DEFAULT});DB.settings.traumaAdded=1}
     if(!d.noInitial){d.text=d.text.replace(/^Initial V\/S:/m,'V/S:');d.noInitial=1}
     if(!d.resultsHdr){if(!/^\s*results\)/im.test(d.text))d.text=d.text.replace(/\n((?:Initial )?V\/S:)/,'\nResults)\n$1');if(d.legend)d.legend=d.legend.replace('PEx) 다음에 검사 결과(','PEx) 다음 Results) 아래에 검사 결과(');d.resultsHdr=1}
