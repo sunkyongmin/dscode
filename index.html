@@ -901,7 +901,6 @@ const LEGEND_DEFAULT0=`기록 형식: CC) 주호소, onset) 발병시각(예: 1D
 약어: C/S/R = cough/sputum/rhinorrhea, A/N/V/D/C = anorexia/nausea/vomiting/diarrhea/constipation, PI- s exudate = pharyngeal injection 없음·삼출물 없음, RHB s murmur = regular heart beat without murmur, CBS = clear breath sound, abd T/RT = abdominal tenderness/rebound tenderness, CVAT = costovertebral angle tenderness, s = without, c = with, (-) 음성, (+) 양성`;
 const TRAUMA_TEMPLATE=`CC)
 onset)
-Injury) 시각 / 장소 / 기전(낙상·충돌·베임 등)
 
 PMHx)
 DM/HTN/DL(-/-/-)
@@ -920,17 +919,16 @@ Alert, GCS 15
 Wound) 부위 / 형태 / 크기 cm
 tenderness/swelling) 
 ROM) 
+SMC intact
 
 Results)
-V/S: 
 X-ray: 
-Lab: 
 
 Imp)
 
 ->
 `;
-const LEGEND_ADD="추가 약어: Med 복용약(항응고제·항혈소판제 포함), H/A = headache, GCS = Glasgow Coma Scale, abd T/RT site = 압통 위치(epigastric, RUQ 등), LOC = loss of consciousness, Injury) 손상 시각·장소·기전, Wound) 상처 부위·형태·크기(cm), ROM = range of motion";
+const LEGEND_ADD="추가 약어: Med 복용약(항응고제·항혈소판제 포함), H/A = headache, GCS = Glasgow Coma Scale, abd T/RT site = 압통 위치(epigastric, RUQ 등), LOC = loss of consciousness, Injury) 손상 시각·장소·기전, SMC = sensory·motor·circulation, Wound) 상처 부위·형태·크기(cm), ROM = range of motion";
 const LEGEND_DEFAULT=LEGEND_DEFAULT0+'\n'+LEGEND_ADD;
 const GENERIC_LEGEND='응급실 의무기록입니다. 일반적인 응급의학 약어(CC, PI, PMHx, ROS, PEx, Imp, s = without, c = with, (-) 음성, (+) 양성, wnl 등)를 사용합니다.';
 function resultsBeforeImp(t){ // 기존 템플릿: Imp) → 검사결과 → -> 순서를 검사결과 → Imp) → -> 로
@@ -1270,6 +1268,11 @@ function migrateLegend(){const L=DB.settings.legend;if(L&&(L.includes('"->" 아�
       if(!/GCS/.test(t))t=t.replace(/^PEx\)[ \t]*$/m,'PEx)\nAlert, GCS 15');
       t=t.replace(/^abd T\/RT\(-\/-\)[ \t]*$/m,'abd T/RT(-/-) site: ');
       d.text=t;if(d.legend&&!d.legend.includes('추가 약어:'))d.legend=d.legend+'\n'+LEGEND_ADD;d.tplV2=1}
+    {const tr=DB.templates.find(x=>x.id==='trauma');if(tr&&!tr.v2){let t=tr.text;
+      t=t.replace(/^Injury\) 시각 \/ 장소 \/ 기전[^\n]*\n/m,'');
+      if(!/SMC/.test(t))t=t.replace(/^(ROM\)[^\n]*)$/m,'$1\nSMC intact');
+      t=t.replace(/^V\/S:[ \t]*\n/m,'').replace(/^Lab:[ \t]*\n/m,'');
+      tr.text=t;if(tr.legend&&!tr.legend.includes('SMC ='))tr.legend=tr.legend.replace(', Wound) 상처 부위',', SMC = sensory·motor·circulation, Wound) 상처 부위');tr.v2=1}}
     if(!DB.settings.traumaAdded){if(!DB.templates.some(x=>x.id==='trauma'))DB.templates.push({id:'trauma',name:'선경민 과장 — 외상',text:TRAUMA_TEMPLATE,legend:LEGEND_DEFAULT});DB.settings.traumaAdded=1}
     if(!d.noInitial){d.text=d.text.replace(/^Initial V\/S:/m,'V/S:');d.noInitial=1}
     if(!d.resultsHdr){if(!/^\s*results\)/im.test(d.text))d.text=d.text.replace(/\n((?:Initial )?V\/S:)/,'\nResults)\n$1');if(d.legend)d.legend=d.legend.replace('PEx) 다음에 검사 결과(','PEx) 다음 Results) 아래에 검사 결과(');d.resultsHdr=1}
