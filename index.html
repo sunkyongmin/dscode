@@ -102,7 +102,10 @@
       <div class="row" style="margin:6px 0 0"><button class="btn sec" onclick="copyNote()" title="Imp)가 채워진 입력창 기록 전체를 복사">기록 전체 복사</button><span class="mut">상병을 Imp)에 넣은 뒤 눌러서 EMR에 붙여넣기</span></div>
       <details open style="margin-top:6px"><summary>처방 붙여넣기 (선택 — 급여기준 점검이 정확해집니다)</summary>
         <div class="mut" style="margin:4px 0">EMR 처방 목록을 마우스로 긁어 복사 → 여기에 붙여넣기. 처방명·검사명만 있으면 되고 형식은 그대로 두어도 됩니다.</div>
-        <textarea id="aiOrders" style="min-height:90px;font-size:13px;line-height:1.4" placeholder="예:&#10;Gaster inj 20mg&#10;Macperan inj&#10;CBC, CRP, Troponin-I&#10;Brain CT (non-contrast)"></textarea></details></div></div>
+        <textarea id="aiOrders" style="min-height:90px;font-size:13px;line-height:1.4" placeholder="예:&#10;Gaster inj 20mg&#10;Macperan inj&#10;CBC, CRP, Troponin-I&#10;Brain CT (non-contrast)"></textarea></details>
+      <details style="margin-top:6px"><summary>검사결과 원문 붙여넣기 (선택 — OpenEvidence에 붙인 Lab 결과 그대로)</summary>
+        <div class="mut" style="margin:4px 0">EMR 검사결과 화면을 긁은 그대로 붙여넣으세요. AI가 이상 수치를 근거로 상병을 고릅니다. 이 칸은 「기록 전체 복사」에 들어가지 않습니다. 맨 위에 환자 이름이 찍혀 있으면 지우고 넣으세요(긴 번호는 자동으로 가림).</div>
+        <textarea id="aiLabs" style="min-height:90px;font-size:13px;line-height:1.4" placeholder="예:&#10;WBC 13.6 H&#10;CRP 5.2 H&#10;Amylase 65&#10;Lipase 40"></textarea></details></div></div>
     <div class="step"><span class="num">3</span><div style="flex:1"><b>상병 추천 → 필요 없는 상병은 × → 「Imp)에 넣기」 → 위 「기록 전체 복사」 → EMR에 붙여넣기</b>
       <div class="row" style="margin:6px 0 0">
         <button class="btn" id="aiBtn" onclick="runAI()">상병 추천</button><span class="mut">Ctrl+Enter</span>
@@ -740,7 +743,7 @@ ${curDrugs()}
 
 이 기록을 쓴 의사의 기록 형식과 약어:
 ${curLegend()}
-비어 있는 항목(예: PI) 뒤에 내용 없음)은 기재되지 않은 것이므로 추정하지 않습니다. 기록 안의 V/S(내원 시 활력징후), EKG, X-ray, Lab, CT 등은 검사 결과입니다. 값이 비어 있는 항목은 시행하지 않았거나 기재하지 않은 것입니다(wnl = within normal limits, NSR = normal sinus rhythm). ROS/PEx에 (-)로 표시된 소견은 음성입니다.
+입력 끝에 [검사결과 원문]이 있으면 EMR 검사결과 화면을 그대로 붙인 것입니다. 정상 범위를 벗어난 수치(H/L 표시 등)는 상병·r/o의 근거로 쓰고, 정상인 검사에는 r/o를 만들지 않습니다. 비어 있는 항목(예: PI) 뒤에 내용 없음)은 기재되지 않은 것이므로 추정하지 않습니다. 기록 안의 V/S(내원 시 활력징후), EKG, X-ray, Lab, CT 등은 검사 결과입니다. 값이 비어 있는 항목은 시행하지 않았거나 기재하지 않은 것입니다(wnl = within normal limits, NSR = normal sinus rhythm). ROS/PEx에 (-)로 표시된 소견은 음성입니다.
 
 동신병원 의무기록실·보험심사 규칙:
 ${rulesForPrompt()}
@@ -1057,7 +1060,7 @@ function renderGaps(){R();const el=document.getElementById('gapList');if(!el)ret
   const sel=document.getElementById('gpRule');if(sel&&!sel.dataset.filled){sel.innerHTML='<option value="">(선택 — 관련 규칙)</option>'+DB.rules.map(r=>`<option>${esc(r.title)}</option>`).join('')+'<option value="기타">기타(메모에 적기)</option>';sel.dataset.filled=1}
   el.innerHTML=DB.gaps.length?'<div class="card"><table><tr><th>날짜</th><th>상황 / 임상적 필요</th><th>관련 기준 / 조치</th><th></th></tr>'+DB.gaps.map(x=>`<tr><td>${esc(x.date)}</td><td>${esc(x.context)}<div class="mut">${esc(x.clinical_need)}</div></td><td>${esc(x.rule)}<div class="mut">${esc(x.action)}${x.memo?' · '+esc(x.memo):''}</div></td><td><button class="btn danger sm" onclick="delGap('${x.id}')">삭제</button></td></tr>`).join('')+'</table></div>':'<div class="alert info">아직 괴리 사례가 없습니다.</div>'}
 function gapFromAI(){const last=window._lastHits||[];showTab('log');setTimeout(()=>{const s=document.getElementById('gpRule');if(last[0]){const o=[...s.options].find(o=>o.text===last[0]);if(o)s.value=o.text}document.getElementById('gapCard').scrollIntoView({behavior:'smooth'});document.getElementById('gpCtx').focus()},60)}
-function clearAI(){if(DB.templates&&DB.templates.some(t=>t.id==='default')&&DB.settings.tplId!=='default'){DB.settings.tplId='default';save();renderTplSel()}curLogId=null;document.getElementById('aiNote').value='';document.getElementById('aiOrders').value='';document.getElementById('aiOut').innerHTML=''}
+function clearAI(){if(DB.templates&&DB.templates.some(t=>t.id==='default')&&DB.settings.tplId!=='default'){DB.settings.tplId='default';save();renderTplSel()}curLogId=null;document.getElementById('aiNote').value='';document.getElementById('aiOrders').value='';document.getElementById('aiLabs').value='';document.getElementById('aiOut').innerHTML=''}
 const PROG={t:null,start:0,base:0,span:0,exp:12000};
 function progStart(){const el=document.getElementById('aiProg');el.style.display='block';PROG.exp=(DB.settings.avgMs||12000);progStage('추천 상병을 만드는 중',0,85)}
 function progStage(label,from,to,exp){clearInterval(PROG.t);PROG.start=Date.now();PROG.base=from;PROG.span=to-from;const e=exp||PROG.exp;document.getElementById('aiProgTxt').textContent=label+'…';
@@ -1068,19 +1071,19 @@ async function runAI(){
   if(!note){toast('의무기록을 입력하세요');return}
   if(R().on&&currentArm()==='미사용'&&!confirm('오늘 당직은 연구 배정상 「미사용」입니다. 그래도 추천을 받을까요? (배정 위반으로 기록됩니다)'))return;
   if(!aiReady()){out.innerHTML='<div class="alert warn"><div class="t">AI 연결 설정이 필요합니다</div>참고·설정 → 설정에서 응급실 비밀번호(또는 API 키)를 저장하세요.</div>';return}
-  const ordersAll=maskPHI(orders);
+  const ordersAll=maskPHI(orders);const labsAll=maskPHI(document.getElementById('aiLabs').value.trim());
   const masked=maskPHI(note);
   const btn=document.getElementById('aiBtn');btn.disabled=true;btn.innerHTML='<span class="spin"></span>추천 중…';const t0=Date.now();progStart();let okRun=false;
-  out.innerHTML=`<div class="card"><details><summary>전송한 내용 (개인정보 자동 가림 적용)</summary><pre class="ref" style="margin-top:8px">${esc(masked)}${ordersAll?'\n\n[처방·검사·처치] '+esc(ordersAll):''}</pre></details></div>`;
+  out.innerHTML=`<div class="card"><details><summary>전송한 내용 (개인정보 자동 가림 적용)</summary><pre class="ref" style="margin-top:8px">${esc(masked)}${ordersAll?'\n\n[처방·검사·처치] '+esc(ordersAll):''}${labsAll?'\n\n[검사결과 원문]\n'+esc(labsAll):''}</pre></details></div>`;
   try{
     let found=[];if(ordersAll){btn.innerHTML='<span class="spin"></span>약 확인 중…';progStage('처방 약 확인 중',0,15,4000);try{found=await lookupUnknownDrugs(ordersAll)}catch(e){}progStage('추천 상병을 만드는 중',15,85);btn.innerHTML='<span class="spin"></span>추천 중…'}
     window._drugFound=found;
-    const user=`[의무기록]\n${masked}\n\n[처방·검사·처치]\n${ordersAll||'(기재 없음)'}`+drugPromptBlock(found);
+    const user=`[의무기록]\n${masked}\n\n[처방·검사·처치]\n${ordersAll||'(기재 없음)'}`+(labsAll?`\n\n[검사결과 원문]\n${labsAll}`:'')+drugPromptBlock(found);
     const sys=buildSystem();
     let txt=await callClaude(sys,user,4000);
     let j=parseJSON(txt);
     if(!j||!j.main){out.innerHTML+=`<div class="alert warn"><div class="t">응답을 해석하지 못했습니다</div><div class="mut">다시 눌러 보세요. 반복되면 이 화면을 캡처해 알려 주세요.</div><details><summary>원문 보기</summary><pre class="ref">${esc(txt)}</pre></details></div>`;return}
-    const ctxAll=ordersAll+'\n'+masked;const head=out.innerHTML;
+    const ctxAll=ordersAll+'\n'+masked+(labsAll?'\n'+labsAll:'');const head=out.innerHTML;
     const issues=validateAI(j,ctxAll);let fixed=false;
     const lf=localFix(j,ctxAll);if(lf.length)fixed=lf;
     const rest=validateAI(j,ctxAll);const t1=Date.now();
